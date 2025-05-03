@@ -1,0 +1,44 @@
+order-id	order-item-id	sku	number-of-items	type	colour	graphic	line_1	line_2	line_3	image_path	theme	Warnings
+203-7926698-8370757	48766176735442	M0634S - CAT - RAINBOW BRIDGE	1	Small Stake	Black		Fondly Remembered	Penny ,Haggis,&Boo	our cats sadly missed	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48766176735442.jpg		Extra space before comma/period in line_2; Not title case in line_3
+206-3971029-5015547	48772709445322	OD045003Gold	1	Regular Stake	Gold	Hearts.png	In Memory of our Ferrets.	They were so... loved.	"Sunni-Callie-Bear-Tolkien
+Smudge-Jogi-Peanut
+Flash-Slick & Slinky."	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48772709445322.jpg		Not title case in line_1; Not title case in line_2
+203-3941692-9558737	48775740732162	OD045004_1	1	Regular Stake	Gold	Rose.png	Robert Edward	Smith	"22/03/1967 - 14/12/2024
+You remain in our thoughts always"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48775740732162.jpg		Not title case in line_3
+203-3034209-4801135	48776115999162	OD045004_1	1	Regular Stake	Gold	Rose.png	Gone but never forgotten	Jay Cartmell	"9th June 2016 - 28th Sept 2024
+Gone but never forgotten our man.
+Forever eight."	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48776115999162.jpg		Not title case in line_1; Not title case in line_3
+204-5792097-1922748	48776606158042	OD045004_1	1	Regular Stake	Gold	Rose.png	In loving memory of	Karen Paula Gray	"19th October 1966 - 28th December 2024
+
+Love you always and forever x x x"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48776606158042.jpg		Not title case in line_1; Repeated word in line_3; Not title case in line_3
+026-2661270-2100325	48778004035042	OD042004Gold	1	Regular Stake	Gold	Cat.png	In loving memory of	Jeffrey	"Went to sleep on 1st May 2025
+Jeffrey lived a very full and 
+adventurous life, 
+always up to mischief 
+AKA Top cat"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48778004035042.jpg		Not title case in line_1; Not title case in line_3
+202-4957394-1245126	48777069136562	OPUV022024UK	1	Regular Stake	Black		In Loving Memory of jeanette	Our mum, Gran, and GreatGran	Your life was a blessing, your memory a treasure, you are loved beyond words and missed beyond measure.  Loved and missed Dearly each and every Day x	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48777069136562.jpg		Not title case in line_1; Not title case in line_2; Double space in line_3; Not title case in line_3
+204-2195418-5357149	48780456598562	OD045003Black	1	Regular Stake	Black	Vine.png	In Loving Memory of Maureen	Passed Away April 18th 2025	“How long will l love you,as long as the stars above you .”x	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48780456598562.jpg		Not title case in line_1; Not title case in line_2; Extra space before comma/period in line_3; Missing space after comma in line_3; Not title case in line_3
+026-0614866-8197957	48781348433402	OD045003	1	Regular Stake	Silver	Plain.png	CAPTAINS	CHARITY BUNKER	"THERE’S A JAR ON THE BAR
+
+THANK YOU"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48781348433402.jpg		Not title case in line_1; Not title case in line_2; Not title case in line_3
+204-2545970-6432322	48778638436442	OD045003Black	1	Regular Stake	Black	Elegant.png	In loving memory	GIBBY  David Robert Gibson	"8th December 1971 - 8th August 2024
+Don’t cry because it’s over, smile because it happened.
+Loved & remembered, always."	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48778638436442.jpg		Not title case in line_1; Double space in line_2; Not title case in line_2; Not title case in line_3
+203-2760397-8842724	48780785278682	OD045004_1	1	Regular Stake	Gold	Rose.png	Baby	Ayesha Naveed	"""Surely we belong to Allah SWT and to Him we shall return"""	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48780785278682.jpg		Not title case in line_3
+206-0977008-2445922	48780839843042	OD045003	1	Regular Stake	Silver	Rose.png	In Loving Memory of	Teresa Fletcher	"9th May 1950 - 29th March 2025
+
+In our hearts you will always stay
+Loved & remembered everyday"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48780839843042.jpg		Not title case in line_1; Not title case in line_3
+202-1082028-2757963	48790457261882	OM008015UK Regular Black	1	Regular Stake	Black					G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48790457261882.jpg		
+202-3421583-9781925	48789011122722	OD045004_1	1	Regular Stake	Gold	Hearts.png	Perdita Penrose Stupart Foster	Wife Mother Granny	"Born 28-04-1957 Died 03-05-2024
+Deeply missed , cherished memories, forever in our hearts"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48789011122722.jpg		Extra space before comma/period in line_3; Not title case in line_3
+203-5996165-2584355	48793385652842	OD045004_1Gold	1	Regular Stake	Gold	Rose.png	In Loving Memory of Our Aba	Eid Mohammad Kurd	15.03.30 - 03.04.2016	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48793385652842.jpg		Not title case in line_1; Not title case in line_3
+203-1682217-1149927	48794983417962	OD045004_1Copper	1	Regular Stake	Copper	Hearts.png	Loving sister	Myra	"Always with us
+Keep chasing rainbows
+xx"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\48794983417962.jpg		Not title case in line_1; Not title case in line_3
+114-3556316-1488241	126809991412401	OC062001_S_US	1	SMALL METAL	BRASS		In Loving Memory	Anna McKitrick	Alice Cunningham	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\126809991412401.jpg		Not title case in line_2
+111-0295266-8211453	126824687921041	M0634BLACKUS2	1	Regular Stake	Black	Floral.png	In Loving Memory	Clarence R Hardwick Sr	"July 19, 1933 - April 13, 2025  
+          Papa to Nick Hardwick Jr           
+Always in our hearts, never forgotten"	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\126824687921041.jpg		Double space in line_3; Not title case in line_3
+113-4971985-2278631	126838754011201	M0634BLACKUS2	1	Regular Stake	Black	Wreath.png	In loving memory	Eloy “Ernie” Henderson	Loved husband, father, and brother.	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\126838754011201.jpg		Not title case in line_1; Not title case in line_3
+113-4393593-0702608	126832925361521	OC062001_L_US	1	METAL	BRASS		In Loving Memory of	Laura Encinas Robinson	1949 - 2025	G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD\004 IMAGES\126832925361521.jpg		Not title case in line_1; Not title case in line_3
