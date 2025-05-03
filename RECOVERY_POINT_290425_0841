@@ -1,0 +1,84 @@
+Amazon Seller Memorial Products - Project Summary
+Date: April 29, 2025
+
+Project Overview
+This is an automated memorial product design and order management system handling orders across Amazon EU/US/AU, Etsy, and eBay platforms. The system is being enhanced with AI capabilities using Llama 3.2-1B for quality assurance and inventory analysis.
+
+Current Status
+Core Components
+Product Design Automation
+SVG generation system for memorial products
+Support for multiple stake types (regular, colored, large)
+Color variations including 'stone' and 'marble'
+Order Management
+Multi-platform order processing
+Zenstores integration for shipping
+Pending Amazon SP-API integration
+AI Integration (In Progress)
+Local Llama 3.2-1B model for:
+Design file quality assurance
+Inventory analysis
+Order validation
+Model path: C:/Users/zentu/.llama/checkpoints/Llama3.2-1B/
+Recent Updates
+Modified LlamaInterface class to use llama-cpp-python
+Installed Visual Studio Build Tools and Git
+Updated model loading and response generation code
+Configured local model paths
+Known Issues
+Selective row skipping in output.csv based on filter criteria
+Awaiting Amazon SP-API access
+Need logging implementation for skipped rows
+Technical Environment
+Python 3.11+
+Production Methods: CNC, Laser, UV, Sublimation
+Build Tools: Visual Studio Build Tools, Git
+Pending: llama-cpp-python installation
+Detailed Next Steps
+1. Complete AI Integration (Immediate Priority)
+Install llama-cpp-python:
+Open new PowerShell session (for Git PATH)
+Run py -3.11 -m pip install llama-cpp-python
+Verify installation
+Test AI Components:
+Design Analysis:
+Test with sample design files
+Verify QA feedback format
+Validate issue detection
+Inventory Analysis:
+Test with current inventory data
+Verify reorder recommendations
+Check sales velocity insights
+Order QA:
+Test with sample orders
+Verify validation rules
+Check error handling
+2. System Improvements
+Implement Logging:
+Add logging for skipped rows in output.csv
+Create log rotation system
+Define log levels and messages
+SP-API Integration:
+Follow up on API access
+Prepare integration code
+Plan testing strategy
+3. Documentation & Maintenance
+Document AI Integration:
+Update technical documentation
+Create user guides
+Document model parameters
+Environment Maintenance:
+Keep requirements.txt updated
+Monitor virtual environment
+Regular dependency updates
+4. Future Enhancements
+Consider additional stake types
+Expand color variations
+Optimize model performance
+Enhance error handling
+Immediate Action Items
+Open new PowerShell session
+Complete llama-cpp-python installation
+Run initial tests of LlamaInterface
+Document any issues encountered
+Would you like to proceed with any of these steps or need clarification on any part of the summary?

@@ -1,0 +1,46 @@
+order-id	order-item-id	sku	number-of-items	type	colour	graphic	line_1	line_2	line_3	image_path	Theme	Warnings
+171-7460739-1745168	48741874856002	OD042004	1	Regular Stake	Silver		Whisky		2015   -   2024	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48741874856002.jpg		Double space in line_3; Not title case in line_3
+204-7038121-6642754	48740136674402	OD045004_1	1	Regular Stake	Gold	Rose.png	In Loving Memory of	A Special Mum and Dad	"Leonard Dufton 06.09.1920 - 19.12.1987
+Gladys Ellen Dufton 21.08.1923 - 25.02.2013
+Always in Our hearts, Missed by all everyday"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48740136674402.jpg		Not title case in line_1; Not title case in line_2; Not title case in line_3
+204-7038121-6642754	48741814505922	OD045004_1	1	Regular Stake	Gold	Rose.png	In Loving Memory of	A special Mum and Dad	"William Alfred Charles Varran 18.03.1919 - 17 12.1992
+Pamela Cicely Varran 10.11.1918 - 13.08.1999
+Gone but never forgotten, Forever Missed."	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48741814505922.jpg		Not title case in line_1; Not title case in line_2; Not title case in line_3
+204-7038121-6642754	48740136674442	OD045004_1	1	Regular Stake	Gold	Wreath.png	In Loving Memory of	Leslie Martin Varran	"24.03.1952 - 09.10.2020
+
+Always in Our Hearts, Forever Missed."	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48740136674442.jpg		Not title case in line_1; Not title case in line_3
+202-9503689-8997139	48749475169762	OD045003Gold	1	Regular Stake	Gold	Wreath.png	In Loving Memory Of	Brian O'Loghlen	"15th May 1952 - 4th September 2024
+In Our Hearts Forever
+Deeply Loved by Family and Friends"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48749475169762.jpg		Not title case in line_3
+203-1617865-6793944	48744706466802	OD045003	1	Regular Stake	Silver	Vine.png	In Memory of	Liam J. O'Malley	"24/05/97~04/05/23
+
+Always on our minds,
+Forever in our Hearts"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48744706466802.jpg		Not title case in line_1; Not title case in line_3
+203-1111476-8925935	48747090025442	OD045004_1Gold	1	Regular Stake	Gold	Vine.png	In loving memory	Brian Ian McPhee	"July 28, 1955- March 22, 2025
+
+To a loving husband and father
+Always in our hearts 
+We miss you so much until we meet again"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48747090025442.jpg		Not title case in line_1; Not title case in line_2; Not title case in line_3
+026-7840048-2952355	48749717081682	OD045003Black	1	Regular Stake	Black	Plain.png	In Loving Memory	Scott Hyslop.	Passed away 20Jan 2025, Deeply loved by Family and Friends	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48749717081682.jpg		Not title case in line_3
+205-0551779-9828367	48749840136002	OD045004_1Silver	1	Regular Stake	Silver	Hearts.png	In loving memory	PAT DAVIES	17th of March 1934 - 15 of February 1993	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48749840136002.jpg		Not title case in line_1; Not title case in line_2; Not title case in line_3
+202-9237076-3340332	48753155476442	OM008015UK Regular Silver	1	Regular Stake	Silver		In loving memory of	Tuayfu	"2013-2025
+Missing your unconditional love,
+We loved you our a little boy,
+You will always be our best friend forever."	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48753155476442.jpg		Not title case in line_1; Not title case in line_3
+205-3050078-3926720	48753424597242	OM008015UK Regular Silver	1	Regular Stake	Silver		In loving Memory of	Colin Holgate My Dad x	"Dad we miss you every Day
+ You will always be loved and in our thoughts
+All the times I spent with you are treasured
+Your loving Daughter Katie xx"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48753424597242.jpg		Not title case in line_1; Not title case in line_2; Not title case in line_3
+026-3278232-1277157	48754673317562	OD045003	1	Regular Stake	Silver	Wreath.png	IN LOVING MEMORY OF	Natasha Jayne Wade	"Born 9/1/1975 Died 23/2/2024
+loved wife,mother,aunt 
+Always loved a very much missed. 
+Planted 9/1/25 on what would of been her 50th birthday."	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48754673317562.jpg		Not title case in line_1; Missing space after comma in line_3; Not title case in line_3
+204-1202399-0621949	48755800070562	OD045004_1Silver	1	Regular Stake	Silver	Elegant.png	In Loving Memory Of	Cliff Noyce 1928-2001	"May Noyce 1925-2022
+L21 283"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\48755800070562.jpg		
+111-9070939-2615451	126731519005001	OD045004	1	Regular Stake	Gold	Contemporary.png	In loving memory of	Arthur Barry Wood	"June 11, 1940 - February 25, 2019
+A great father, husband, Pop Pop and friend"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\126731519005001.jpg		Not title case in line_1; Repeated word in line_3; Not title case in line_3
+111-5230281-0741859	126731491117161	M0683BrassXL	1	XL METAL	BRASS		In loving memory of	Barbara Wilkins	Co-Founder	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\126731491117161.jpg		Not title case in line_1
+113-5928349-2806627	126737691168361	OD045027US	1	Regular Plaque	Gold	Flowers.png	In Loving Memory	Tom Sollitt	"Waverley Place member 2005-2025
+You will live on in our hearts forever"	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\126737691168361.jpg		Not title case in line_3
+113-7616324-8987441	126764982710201	M0634BLACK	1	Regular Stake	Black		In Loving Memory of	Zachary Foster	Forever rooted in our hearts.	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\126764982710201.jpg		Not title case in line_1; Not title case in line_3
+113-2420493-6056251	126779764197561	OC062001_L_US	2	METAL	BRASS		In Loving Memory	Ross “Dozer” Wilson	May 11, 1953 - Feb 10, 2025	G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES\126779764197561.jpg		
