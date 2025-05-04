@@ -1,14 +1,8 @@
-print('PHOTO STAKES SCRIPT STARTED')
 import os
-print('imported os')
 import svgwrite
-print('imported svgwrite')
 from memorial_base import MemorialBase
-print('imported MemorialBase')
 import pandas as pd
-print('imported pandas')
 
-print('Defining PhotoStakesProcessor class')
 class PhotoStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
         print('PhotoStakesProcessor.__init__ called')
@@ -101,9 +95,13 @@ class PhotoStakesProcessor(MemorialBase):
         if not pd.isna(order['image_path']):
             photo_path = order['image_path']
             print(f"Looking for photo: {photo_path}")
-            if os.path.exists(photo_path):
-                print(f"Found photo: {photo_path}")
-                photo_data = self.embed_image(photo_path)
+            norm_path = os.path.normpath(photo_path)
+            print(f"[add_photo_memorial] photo_path: {photo_path}")
+            print(f"[add_photo_memorial] Normalized: {norm_path}")
+            print(f"[add_photo_memorial] Exists: {os.path.exists(norm_path)}")
+            if os.path.exists(norm_path):
+                print(f"Found photo: {norm_path}")
+                photo_data = self.embed_image(norm_path)
                 if photo_data:
                     print(f"Successfully embedded photo")
                     photo = dwg.image(
@@ -218,28 +216,21 @@ class PhotoStakesProcessor(MemorialBase):
         df.columns = [col.lower() for col in df.columns]
         print(f"Columns after normalization: {list(df.columns)}")
         print(df.head())
-        # --- Select photo stakes by type, graphic, or photo SKU list ---
-        skulist_path = r'G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD/SKULIST.csv'
-        skulist_df = pd.read_csv(skulist_path)
-        skulist_df.columns = [col.lower() for col in skulist_df.columns]
-        # Normalize SKUs for robust matching
-        photo_skus = set(skulist_df[(skulist_df['type'].str.lower().isin(['regular stake', 'regular plaque'])) & (skulist_df['graphic'].str.lower() == 'photo')]['sku'].astype(str).str.strip().str.lower())
-        df['sku_norm'] = df['sku'].astype(str).str.strip().str.lower()
-        print(f"Photo SKUs (normalized): {sorted(list(photo_skus))}")
-        print(f"Order SKUs (normalized): {sorted(list(df['sku_norm'].unique()))}")
-        intersection = set(df['sku_norm'].unique()) & photo_skus
-        print(f"SKUs present in both orders and photo SKUs: {intersection}")
+        # --- Select photo stakes using 'decorationtype' field ---
+        if 'decorationtype' not in df.columns:
+            print("Warning: 'decorationtype' column not found in input orders. Please ensure order_pipeline.py was run after updating SKULIST.csv.")
+            df['decorationtype'] = ''
+        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
         photo_stakes = df[
-            (df['type'].str.lower().isin(['regular stake', 'regular plaque'])) &
+            (df['type'] == 'regular stake') &
+            (df['colour'].isin(allowed_colours)) &
             (df['image_path'].notna()) & (df['image_path'] != '') &
-            (df['sku_norm'].isin(photo_skus))
+            (df['decorationtype'] == 'photo')
         ].copy()
-        print(f"\nFound {len(photo_stakes)} Photo Stakes")
-        if not photo_stakes.empty:
-            print(photo_stakes[['order-id', 'sku', 'graphic']].head())
-        else:
-            print("No eligible photo stakes found (check type, image_path, and SKU fields)."); print(df[['order-id','sku','graphic','image_path']])
+        print(f"Rows after filtering for Regular Stake, allowed colours, and DecorationType == 'photo': {len(photo_stakes)}")
+        print(photo_stakes[['order-id', 'sku', 'colour', 'decorationtype']].head() if not photo_stakes.empty else photo_stakes.head())
         if photo_stakes.empty:
+            print("No eligible photo stakes found for photo_stakes.py processor.")
             return
         # Process in batches of 3
         batch_num = 1

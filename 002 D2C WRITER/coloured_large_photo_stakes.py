@@ -4,6 +4,71 @@ from memorial_base import MemorialBase
 import pandas as pd
 
 class ColouredLargePhotoStakesProcessor(MemorialBase):
+    def process_orders(self, orders):
+
+        # Accept both DataFrame and list
+        if isinstance(orders, list):
+            df = pd.DataFrame(orders)
+        else:
+            df = orders.copy()
+        df.columns = [col.lower() for col in df.columns]
+
+
+        # --- Select coloured large photo stakes using 'decorationtype' field ---
+        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
+        if 'decorationtype' not in df.columns:
+            print("Warning: 'decorationtype' column not found in input orders. Please ensure order_pipeline.py was run after updating SKULIST.csv.")
+            df['decorationtype'] = ''
+        # Normalize relevant columns for robust filtering
+        df['type'] = df['type'].astype(str).str.strip().str.lower()
+        df['colour'] = df['colour'].astype(str).str.strip().str.lower()
+        df['decorationtype'] = df['decorationtype'].astype(str).str.strip().str.lower()
+        allowed_colours_lower = [c.lower() for c in allowed_colours]
+        # Enhanced diagnostics
+
+
+
+        # Show why rows are excluded
+        excluded_rows = []
+        for idx, row in df.iterrows():
+            reasons = []
+            if row['type'] != 'large stake':
+                reasons.append(f"type={row['type']}")
+            if row['colour'] not in allowed_colours_lower:
+                reasons.append(f"colour={row['colour']}")
+            if pd.isna(row['image_path']) or row['image_path'] == '':
+                reasons.append("missing image_path")
+            if row['decorationtype'] != 'photo':
+                reasons.append(f"decorationtype={row['decorationtype']}")
+            if reasons:
+                excluded_rows.append((idx, reasons))
+
+        large_photo_stakes = df[
+            (df['type'] == 'large stake') &
+            (df['colour'].isin(allowed_colours_lower)) &
+            (df['image_path'].notna()) & (df['image_path'] != '') &
+            (df['decorationtype'] == 'photo')
+        ].copy()
+        print(f"Eligible large photo stakes: {len(large_photo_stakes)}")
+        if not large_photo_stakes.empty:
+            print(large_photo_stakes[['order-id','sku','type','colour','decorationtype','image_path']])
+        else:
+            print("No eligible large photo stakes found.")
+        print(f"Rows after filtering for Large Stake, allowed colours, and DecorationType == 'photo': {len(large_photo_stakes)}")
+        print(large_photo_stakes[['order-id', 'sku', 'colour', 'decorationtype']].head() if not large_photo_stakes.empty else large_photo_stakes.head())
+        if large_photo_stakes.empty:
+            print("No eligible coloured large photo stakes found for coloured_large_photo_stakes.py processor.")
+            return
+        # Process in batches of 4 (2x2 grid)
+        batch_num = 1
+        for start_idx in range(0, len(large_photo_stakes), 4):
+            batch_orders = large_photo_stakes.iloc[start_idx:start_idx + 4]
+            if not batch_orders.empty:
+                print(f"\nProcessing Coloured Large Photo batch {batch_num}...")
+                self.create_memorial_svg(batch_orders.to_dict('records'), batch_num)
+                self.create_batch_csv(batch_orders.to_dict('records'), batch_num, self.CATEGORY)
+                batch_num += 1
+
     def __init__(self, graphics_path, output_dir):
         super().__init__(graphics_path, output_dir)
         self.CATEGORY = 'COLOURED_LARGE_PHOTO_STAKES'
@@ -69,23 +134,32 @@ class ColouredLargePhotoStakesProcessor(MemorialBase):
         frame_y = y + (self.memorial_height_px - self.photo_height_px) / 2
         
         # Calculate center position for the clipping rectangle
-        clip_x = frame_x + (self.photo_width_px - self.photo_clip_width_px) / 2
-        clip_y = frame_y + (self.photo_height_px - self.photo_clip_height_px) / 2
-        
-        # Calculate text area center for the blue outline
-        text_x = frame_x + self.photo_width_px + self.text_right_shift_px
-        text_area_width = self.memorial_width_px - (text_x - x) - self.text_right_shift_px
-        text_center_x = text_x + text_area_width / 2 - (self.photo_clip_width_px / 2)
-        text_center_y = y + (28 * self.px_per_mm)  # Align with line 1
-        
-        # Add black background rectangle for photo visibility
+        clip_x = frame_x
+        clip_y = frame_y
+
+        # Draw photo rectangle
         dwg.add(dwg.rect(
             insert=(clip_x, clip_y),
             size=(self.photo_clip_width_px, self.photo_clip_height_px),
             rx=self.photo_corner_radius_px,
             ry=self.photo_corner_radius_px,
-            fill='black'
+            fill='white',
+            stroke='black',
+            stroke_width=self.photo_outline_stroke_px
         ))
+
+        # Embed photo if available
+        photo_path = order.get('image_path', '')
+        if isinstance(photo_path, str) and photo_path.strip() != '' and not pd.isna(photo_path):
+            if os.path.exists(photo_path):
+                dwg.add(dwg.image(
+                    href=photo_path,
+                    insert=(frame_x, frame_y),
+                    size=(self.photo_width_px, self.photo_height_px),
+                    preserveAspectRatio='xMidYMid slice'
+                ))
+            else:
+                print(f"Photo not found: {photo_path}")
         
         # Add clipping rectangle with same dimensions
         clip_rect = dwg.rect(
@@ -101,6 +175,12 @@ class ColouredLargePhotoStakesProcessor(MemorialBase):
         clip_path = dwg.defs.add(dwg.clipPath(id=f'clip_{x}_{y}'))
         clip_path.add(clip_rect)
         
+        # Calculate text area center for the blue outline
+        text_x = frame_x + self.photo_width_px + self.text_right_shift_px
+        text_area_width = self.memorial_width_px - (text_x - x) - self.text_right_shift_px
+        text_center_x = text_x + text_area_width / 2
+        text_center_y = y + (28 * self.px_per_mm)  # Align with line 1
+
         # Add blue outlined rectangle centered over text
         dwg.add(dwg.rect(
             insert=(text_center_x, text_center_y),
@@ -124,14 +204,8 @@ class ColouredLargePhotoStakesProcessor(MemorialBase):
         ))
         
         # Add photo if path exists
-        if not pd.isna(order['photo_path']):
-            # Handle both absolute and relative paths
-            photo_path = order['photo_path']
-            if not os.path.isabs(photo_path):
-                # If path is relative, join with graphics_path
-                photo_path = os.path.join(self.graphics_path, photo_path.replace('\\', os.sep))
-            
-            print(f"Looking for photo: {photo_path}")
+        photo_path = order.get('image_path', '')
+        if isinstance(photo_path, str) and photo_path.strip() != '' and not pd.isna(photo_path):
             if os.path.exists(photo_path):
                 print(f"Found photo: {photo_path}")
                 photo_data = self.embed_image(photo_path)
@@ -190,48 +264,33 @@ class ColouredLargePhotoStakesProcessor(MemorialBase):
                 ))
 
     def create_memorial_svg(self, orders, batch_num):
+        import traceback
         filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
         filepath = os.path.join(self.OUTPUT_DIR, filename)
-        
-        dwg = svgwrite.Drawing(
-            filepath,
-            size=(f"{self.page_width_mm}mm", f"{self.page_height_mm}mm"),
-            viewBox=f"0 0 {self.page_width_px} {self.page_height_px}"
-        )
-        
-        # Process 4 memorials in 2x2 grid
-        for idx, order in enumerate(orders):
-            if idx >= 4:
-                break
-                
-            row = idx // self.grid_cols
-            col = idx % self.grid_cols
-            x = self.x_offset_px + (col * self.memorial_width_px)
-            y = self.y_offset_px + (row * self.memorial_height_px)
-            
-            self.add_photo_memorial(dwg, x, y, order)
-        
-        # Add reference point
-        self.add_reference_point(dwg)
-        dwg.save()
-        return dwg
+        print(f"[ColouredLargePhotoStakesProcessor] Creating SVG: {filepath}")
+        try:
+            dwg = svgwrite.Drawing(
+                filepath,
+                size=(f"{self.page_width_mm}mm", f"{self.page_height_mm}mm"),
+                viewBox=f"0 0 {self.page_width_px} {self.page_height_px}"
+            )
+            # Process 4 memorials in 2x2 grid
+            for idx, order in enumerate(orders):
+                if idx >= 4:
+                    break
+                row = idx // self.grid_cols
+                col = idx % self.grid_cols
+                x = self.x_offset_px + (col * self.memorial_width_px)
+                y = self.y_offset_px + (row * self.memorial_height_px)
+                print(f"  Adding photo memorial at grid ({row}, {col}) position: x={x}, y={y}")
+                self.add_photo_memorial(dwg, x, y, order)
+            # Add reference point
+            self.add_reference_point(dwg)
+            print(f"[ColouredLargePhotoStakesProcessor] Saving SVG to: {filepath}")
+            dwg.save()
+            print(f"[ColouredLargePhotoStakesProcessor] SVG successfully written: {filepath}")
+        except Exception as e:
+            tb = traceback.format_exc()
+            print(f"[ColouredLargePhotoStakesProcessor] ERROR: Failed to write SVG {filepath}\n{tb}")
 
-    def process_orders(self, df):
-        # Filter for coloured large photo stakes
-        large_photo_stakes = df[
-            (df['COLOUR'].str.lower().isin(['copper', 'gold', 'silver'])) & 
-            (df['TYPE'].str.contains('Large Stake', case=False, na=False)) &
-            (df['photo_path'].notna())
-        ].copy()
-        
-        print(f"\nFound {len(large_photo_stakes)} Coloured Large Photo Stakes")
-        
-        # Process in batches of 4
-        batch_num = 1
-        for start_idx in range(0, len(large_photo_stakes), 4):
-            batch_orders = large_photo_stakes.iloc[start_idx:start_idx + 4]
-            if not batch_orders.empty:
-                print(f"\nProcessing Coloured Large Photo Stakes batch {batch_num}...")
-                self.create_memorial_svg(batch_orders.to_dict('records'), batch_num)
-                self.create_batch_csv(batch_orders.to_dict('records'), batch_num, self.CATEGORY)
-                batch_num += 1
+

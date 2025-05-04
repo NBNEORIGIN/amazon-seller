@@ -1,6 +1,6 @@
 import pandas as pd
 import svgwrite
-print('memorial_base.py loaded')
+
 import os
 from svgwrite import mm
 import textwrap
@@ -12,7 +12,7 @@ from datetime import datetime
 
 class MemorialBase:
     def __init__(self, graphics_path, output_dir):
-        print('MemorialBase.__init__ called')
+        
         # Conversion factors
         self.px_per_mm = 1 / 0.26458333333
         self.pt_to_mm = 0.2645833333
@@ -119,15 +119,21 @@ class MemorialBase:
         df.to_csv(filepath, index=False, encoding="utf-8")
 
     def embed_image(self, image_path):
+        print(f"[embed_image] Original image_path: {image_path}")
+        norm_path = os.path.normpath(image_path)
+        print(f"[embed_image] Normalized image_path: {norm_path}")
+        exists = os.path.exists(norm_path)
+        print(f"[embed_image] File exists: {exists}")
         try:
-            mime_type = mimetypes.guess_type(image_path)[0]
+            mime_type = mimetypes.guess_type(norm_path)[0]
             if mime_type is None:
                 mime_type = 'image/png'
-            with open(image_path, 'rb') as img_file:
+            with open(norm_path, 'rb') as img_file:
                 img_data = base64.b64encode(img_file.read()).decode()
+            print(f"[embed_image] Successfully read and encoded image: {norm_path}")
             return f'data:{mime_type};base64,{img_data}'
         except Exception as e:
-            print(f"Error embedding image {image_path}: {str(e)}")
+            print(f"[embed_image] Error embedding image {norm_path}: {str(e)}")
             return None
 
     def wrap_text(self, text, max_chars=40):
@@ -157,7 +163,7 @@ class MemorialBase:
     def add_reference_point(self, dwg):
         ref_size_px = 0.1 * self.px_per_mm
         x_pos = self.page_width_px - ref_size_px
-        y_pos = (self.page_height_mm - 0.011) * self.px_per_mm - ref_size_px
+        y_pos = self.page_height_px - ref_size_px
         dwg.add(dwg.rect(
             insert=(x_pos, y_pos),
             size=(ref_size_px, ref_size_px),

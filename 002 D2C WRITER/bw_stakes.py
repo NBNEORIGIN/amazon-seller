@@ -9,10 +9,29 @@ class BWStakesProcessor(MemorialBase):
         self.CATEGORY = 'B&W'
 
     def process_orders(self, df):
-        # Normalize all column names to lowercase
-        df.columns = [col.lower() for col in df.columns]
-        # Convert colour column to lowercase for consistent comparison
-        df['colour'] = df['colour'].str.lower()
+        # Normalize all column names to lowercase and strip
+        df.columns = [col.lower().strip() for col in df.columns]
+        if 'type' in df.columns:
+            df['type'] = df['type'].astype(str).str.strip().str.lower()
+        if 'colour' in df.columns:
+            df['colour'] = df['colour'].astype(str).str.strip().str.lower()
+        if 'decorationtype' not in df.columns:
+    
+            df['decorationtype'] = ''
+        else:
+            df['decorationtype'] = df['decorationtype'].astype(str).str.strip().str.lower()
+
+        allowed_colours = ['black', 'slate']
+        eligible = df[
+            (df['type'] == 'regular stake') &
+            (df['colour'].isin(allowed_colours)) &
+            (df['decorationtype'] == 'graphic')
+        ].copy()
+
+
+        if eligible.empty:
+    
+            return
 
         # Expand rows by number-of-items
         expanded_rows = []

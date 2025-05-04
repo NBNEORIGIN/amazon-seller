@@ -3,7 +3,7 @@ import sys
 import os
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QTextEdit, QFileDialog,
-    QTableWidget, QTableWidgetItem, QAbstractItemView, QSplitter, QHBoxLayout, QLineEdit, QCheckBox
+    QTableWidget, QTableWidgetItem, QAbstractItemView, QSplitter, QHBoxLayout, QLineEdit, QCheckBox, QMessageBox
 )
 from PyQt5.QtSvg import QSvgWidget
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -73,6 +73,10 @@ class MainWindow(QMainWindow):
         self.open_output_button = QPushButton('Open Output Folder')
         self.open_output_button.clicked.connect(self.open_output_folder)
         control_bar.addWidget(self.open_output_button)
+        self.create_svgs_button = QPushButton('Create SVGs')
+        self.create_svgs_button.setEnabled(False)
+        self.create_svgs_button.clicked.connect(self.generate_svgs)
+        control_bar.addWidget(self.create_svgs_button)
         self.warnings_only_checkbox = QCheckBox('Show Only Warnings')
         self.warnings_only_checkbox.stateChanged.connect(self.filter_table)
         control_bar.addWidget(self.warnings_only_checkbox)
@@ -97,8 +101,6 @@ class MainWindow(QMainWindow):
         # Preview pane (right)
         self.preview_pane = QWidget()
         preview_layout = QVBoxLayout(self.preview_pane)
-        from PyQt5.QtSvg import QSvgWidget
-        from PyQt5.QtWidgets import QPushButton, QFileDialog, QHBoxLayout
         self.svg_widget = QSvgWidget()
         self.svg_widget.setMinimumSize(200, 200)
         preview_layout.addWidget(self.svg_widget)
@@ -176,6 +178,20 @@ class MainWindow(QMainWindow):
             self.last_df = df  # Store for copy-to-clipboard
             self.populate_table(df)
             self.copy_button.setEnabled(True)
+            self.create_svgs_button.setEnabled(True)
+            # Copy output.txt and output.csv to central folder for stake processors
+            try:
+                import shutil
+                src_txt = os.path.join(output_dir, 'output.txt')
+                dst_txt = os.path.join(os.path.dirname(__file__), '001 AMAZON DATA DOWNLOAD', 'output.txt')
+                if os.path.exists(src_txt):
+                    shutil.copy2(src_txt, dst_txt)
+                src_csv = os.path.join(output_dir, 'output.csv')
+                dst_csv = os.path.join(os.path.dirname(__file__), '001 AMAZON DATA DOWNLOAD', 'output.csv')
+                if os.path.exists(src_csv):
+                    shutil.copy2(src_csv, dst_csv)
+            except Exception as copy_err:
+                self.log(f'Warning: could not copy output files for stake scripts: {copy_err}')
             self.log(f'Order processing complete. {len(df)} orders processed. Images saved to 004 IMAGES.')
         except Exception as e:
             import traceback
@@ -335,6 +351,41 @@ class MainWindow(QMainWindow):
 
     def log(self, message):
         self.log_output.append(message)
+
+    def generate_svgs(self):
+        """Generate Regular, B&W, and Photo stake SVGs for the currently processed orders."""
+        if not hasattr(self, 'selected_files') or not self.selected_files:
+            self.log('No order files selected – cannot create SVGs.')
+            QMessageBox.warning(self, 'Create SVGs', 'Please process orders first.')
+            return
+
+        try:
+            import subprocess, sys, os
+
+            svg_output = os.path.join(os.path.dirname(self.selected_files[0]), 'SVG_OUTPUT')
+            os.makedirs(svg_output, exist_ok=True)
+
+            script_dir = os.path.join(os.path.dirname(__file__), '002 D2C WRITER')
+            graphics_path = r'G:/My Drive/001 NBNE/001 M/M0634 - METALLIC PERSONALISED MEMORIAL - DICK, TOM/001 Design/002 MUTOH/002 AUTODESIGN'
+            images_path = r'G:/My Drive/003 APPS/002 AmazonSeller/004 IMAGES'
+
+            self.log('Creating SVGs...')
+
+            subprocess.run([sys.executable, os.path.join(script_dir, 'regular_stakes.py'), svg_output, graphics_path], check=True)
+            subprocess.run([sys.executable, os.path.join(script_dir, 'bw_stakes.py'), svg_output, graphics_path], check=True)
+            subprocess.run([sys.executable, os.path.join(script_dir, 'photo_stakes.py'), svg_output, graphics_path, images_path], check=True)
+
+            QMessageBox.information(self, 'Create SVGs', f'Regular, B&W, and Photo stake SVGs generated in:\n{svg_output}')
+            self.log(f'SVGs generated in {svg_output}')
+
+        except subprocess.CalledProcessError as cpe:
+            self.log(f'SVG generation script failed: {cpe}')
+            QMessageBox.critical(self, 'Create SVGs', f'SVG script failed:\n{cpe}')
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            self.log(f'Error generating SVGs:\n{tb}')
+            QMessageBox.critical(self, 'Create SVGs', f'Failed to generate SVGs:\n{e}')
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

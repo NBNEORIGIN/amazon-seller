@@ -224,14 +224,12 @@ class BWLargePhotoStakesProcessor(MemorialBase):
             (df['photo_path'].notna())
         ].copy()
         
-        print(f"\nFound {len(large_photo_stakes)} B&W Large Photo Stakes")
-        
         # Process in batches of 2
         batch_num = 1
         for start_idx in range(0, len(large_photo_stakes), 2):
             batch_orders = large_photo_stakes.iloc[start_idx:start_idx + 2]
             if not batch_orders.empty:
-                print(f"\nProcessing B&W Large Photo Stakes batch {batch_num}...")
+
                 self.create_memorial_svg(batch_orders.to_dict('records'), batch_num)
                 self.create_batch_csv(batch_orders.to_dict('records'), batch_num, self.CATEGORY)
                 batch_num += 1

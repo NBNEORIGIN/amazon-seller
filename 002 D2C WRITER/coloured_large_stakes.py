@@ -37,7 +37,7 @@ class ColouredLargeStakesProcessor(MemorialBase):
             (df['TYPE'].str.contains('Large Stake', case=False, na=False)) &
             (df['COLOUR'].str.lower().isin(['copper', 'gold', 'silver']))
         ].copy()
-        print(f"\nFound {len(filtered)} Coloured Large Stakes (copper/gold/silver)")
+
         batch_num = 1
         for start_idx in range(0, len(filtered), self.batch_size):
             batch_orders = filtered.iloc[start_idx:start_idx + self.batch_size]

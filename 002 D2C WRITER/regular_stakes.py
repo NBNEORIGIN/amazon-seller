@@ -24,10 +24,10 @@ class RegularStakesProcessor(MemorialBase):
         self.memorial_height_mm = 90
         self.page_width_mm = 439.8
         self.page_height_mm = 289.9
-        self.memorial_width_px = int(self.memorial_width_mm * self.px_per_mm)
-        self.memorial_height_px = int(self.memorial_height_mm * self.px_per_mm)
-        self.page_width_px = int(self.page_width_mm * self.px_per_mm)
-        self.page_height_px = int(self.page_height_mm * self.px_per_mm)
+        self.memorial_width_px = self.memorial_width_mm * self.px_per_mm
+        self.memorial_height_px = self.memorial_height_mm * self.px_per_mm
+        self.page_width_px = self.page_width_mm * self.px_per_mm
+        self.page_height_px = self.page_height_mm * self.px_per_mm
 
         # Centering offsets
         grid_width_mm = self.memorial_width_mm * self.grid_cols
@@ -87,12 +87,32 @@ class RegularStakesProcessor(MemorialBase):
         else:
             df = orders.copy()
 
-        df.columns = [col.lower() for col in df.columns]
-        df['type'] = df['type'].str.strip().str.lower()
-        df['colour'] = df['colour'].str.strip().str.lower()
+        df.columns = [col.lower().strip() for col in df.columns]
+        if 'type' in df.columns:
+            df['type'] = df['type'].astype(str).str.strip().str.lower()
+        if 'colour' in df.columns:
+            df['colour'] = df['colour'].astype(str).str.strip().str.lower()
+        if 'decorationtype' not in df.columns:
+            print("Warning: 'decorationtype' column not found in input orders. Please ensure order_pipeline.py was run after updating SKULIST.csv.")
+            df['decorationtype'] = ''
+        else:
+            df['decorationtype'] = df['decorationtype'].astype(str).str.strip().str.lower()
 
         print(f"Columns after normalization: {list(df.columns)}")
         print(df.head())
+
+        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
+        # Filter for Regular Stake, allowed colours, and DecorationType == Graphic
+        eligible = df[
+            (df['type'] == 'regular stake') &
+            (df['colour'].isin(allowed_colours)) &
+            (df['decorationtype'] == 'graphic')
+        ].copy()
+        print(f"Rows after filtering for Regular Stake, allowed colours, and DecorationType == 'graphic': {len(eligible)}")
+        print(eligible[['order-id', 'sku', 'colour', 'decorationtype']].head() if not eligible.empty else eligible.head())
+        if eligible.empty:
+            print("No eligible regular stakes found for regular_stakes.py processor.")
+            return
 
         # Expand rows by number-of-items
         expanded_rows = []
@@ -123,12 +143,22 @@ class RegularStakesProcessor(MemorialBase):
         # --- Exclude photo SKUs based on SKULIST.csv ---
         skulist_path = r'G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD/SKULIST.csv'
         skulist_df = pd.read_csv(skulist_path)
-        skulist_df.columns = [col.lower() for col in skulist_df.columns]
-        photo_skus = set(skulist_df[(skulist_df['type'].str.lower().isin(['regular stake', 'regular plaque'])) & (skulist_df['graphic'].str.lower() == 'photo')]['sku'].str.strip())
+        skulist_df.columns = [col.lower().strip() for col in skulist_df.columns]
+        if 'decorationtype' in skulist_df.columns:
+            skulist_df['decorationtype'] = skulist_df['decorationtype'].astype(str).str.strip().str.lower()
+        else:
+            print("Warning: 'decorationtype' column not found in SKULIST.csv!")
+            skulist_df['decorationtype'] = ''
+        if 'type' in skulist_df.columns:
+            skulist_df['type'] = skulist_df['type'].astype(str).str.strip().str.lower()
+        else:
+            print("Warning: 'type' column not found in SKULIST.csv!")
+            skulist_df['type'] = ''
+        photo_skus = set(skulist_df[(skulist_df['type'].isin(['regular stake', 'regular plaque'])) & (skulist_df['decorationtype'] == 'photo')]['sku'].astype(str).str.strip())
         before = len(filtered)
         filtered = filtered[(filtered['type'].str.lower().isin(['regular stake', 'regular plaque'])) & (~filtered['sku'].isin(photo_skus))]
         print(f"Filtered out {before - len(filtered)} photo stakes from regular stake processing (by photo SKU list).")
-        print(f"Sample regular stakes: {filtered[['order-id', 'sku', 'graphic']].head()}")
+        print(f"Sample regular stakes: {filtered[['order-id', 'sku', 'colour', 'decorationtype']].head()}")
 
         print(f"\nFiltered columns: {list(filtered.columns)}")
         print(filtered.head())
@@ -294,7 +324,7 @@ class RegularStakesProcessor(MemorialBase):
         # Add reference point (0.1mm blue square) in bottom right corner
         ref_size_px = 0.1 * self.px_per_mm
         x_pos = self.page_width_px - ref_size_px
-        y_pos = (self.page_height_mm - 0.011) * self.px_per_mm - ref_size_px
+        y_pos = self.page_height_px - ref_size_px
 
         dwg.add(dwg.rect(
             insert=(x_pos, y_pos),

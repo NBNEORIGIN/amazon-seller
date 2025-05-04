@@ -1,4 +1,4 @@
-﻿SKU,COLOUR,TYPE,Graphic,Theme
+﻿SKU,COLOUR,TYPE,DecorationType,Theme
 OC062001_L_US,BRASS,METAL,None,
 OC062005_L_US,BRASS,METAL,Graphic,
 OD042004,Silver,Regular Stake,Graphic,Pet
@@ -46,7 +46,7 @@ M0634BLACKUS2,Black,Regular Stake,Graphic,
 OM003025LBWUKPhoto,Black,Large Stake,Photo,Islamic
 OD042007UK,Silver,Regular Stake,Graphic,
 OMS008046RegUK,Silver,Regular Plaque,Photo,
-M0634S - CAT - BLACK,Black,Small Stake,Graphic,Pet
+M0634S - CAT - BLACK,Black,Small Stake,DecorationType,Pet
 OD045032Gold,Gold,Regular Stake,Graphic,
 OD042004Gold,Gold,Regular Stake,Graphic,
 OD045049Copper,Copper,Regular Stake,Graphic,Baby
@@ -83,3 +83,5 @@ OM003025BW,Black,Regular Stake,Graphic,Islamic
 M0680Gold,Gold,Large Stake,Photo,
 OD045027US,Gold,Regular Plaque,Graphic,
 M0634S - CAT - RAINBOW Bridge,Black,Small Stake,Graphic,
+OD042030Silver,Silver,Regular Stake,Graphic,
+OM003038,Silver,Regular Stake,Graphic,

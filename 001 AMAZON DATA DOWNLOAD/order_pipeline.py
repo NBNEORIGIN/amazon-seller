@@ -123,7 +123,11 @@ def load_skulist(skulist_file):
         rows = list(reader)
         print(f"SKULIST.csv loaded, {len(rows)} rows found.")
         for i, row in enumerate(rows[:3]):
-            print(f"Row {i}: {row}")
+            print(f"Row {i} (raw): {row}")
+        # After normalization, print the first 3 normalized rows
+        for i, row in enumerate(rows[:3]):
+            normalized = {k.lower(): v.strip() for k, v in row.items()}
+            print(f"Row {i} (normalized): keys={list(normalized.keys())}, decorationtype={normalized.get('decorationtype')}")
         # Dynamically detect the SKU column key
         if rows and rows[0]:
             sku_col = None
@@ -138,7 +142,7 @@ def load_skulist(skulist_file):
         for row in rows:
             sku = row.get(sku_col, '').strip().lower()
             if sku:
-                # Normalize all keys to lower-case for robust access
+                # Normalize all keys to lower-case for robust access (including 'decorationtype')
                 normalized = {k.lower(): v.strip() for k, v in row.items()}
                 skulookup[sku] = normalized
     print(f'SKULIST lookup keys: {list(skulookup.keys())}')
@@ -173,6 +177,8 @@ def generate_warnings(row):
     return "; ".join(warnings)
 
 def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=None):
+    # Force images_dir to canonical location
+    images_dir = r'G:/My Drive/003 APPS/002 AmazonSeller/004 IMAGES'
     # Accepts a list of report files or a single file
     if isinstance(report_paths, str):
         report_paths = [report_paths]
@@ -244,6 +250,11 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
             missing_sku_warning = f"SKU '{order['sku']}' not found in SKULIST.csv. Please add it for future mapping."
         else:
             missing_sku_warning = ""
+        print(f"Processing SKU {order['sku']}: sku_info={sku_info}")
+        # Special case: if SKU is 'OD042030Silver', force graphic to 'OD042030Silver.png'
+        graphic_value = (graphic + ".png") if graphic else ""
+        if original_sku.strip().lower() == 'od042030silver':
+            graphic_value = 'OD042030Silver.png'
         row = {
             "order-id": order["order-id"],
             "order-item-id": order["order-item-id"],
@@ -251,13 +262,15 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
             "number-of-items": order["number-of-items"],
             "type": sku_info.get("type", ""),
             "colour": sku_info.get("colour", ""),
-            "graphic": (graphic + ".png") if graphic else "",
+            "graphic": graphic_value,
             "line_1": line_1,
             "line_2": line_2,
             "line_3": line_3,
             "image_path": image_path,
             "theme": sku_info.get("theme", ""),
+            "decorationtype": sku_info.get("decorationtype", sku_info.get("DecorationType", "")),
         }
+        print(f"Order row decorationtype: {row['decorationtype']}")
         # Add missing SKU warning if applicable
         warning_text = generate_warnings(row)
         if missing_sku_warning:
@@ -272,7 +285,7 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
     output_csv = os.path.join(output_dir, "output.csv")
     fieldnames = [
         "order-id", "order-item-id", "sku", "number-of-items",
-        "type", "colour", "graphic", "line_1", "line_2", "line_3", "image_path", "theme", "Warnings"
+        "type", "colour", "graphic", "line_1", "line_2", "line_3", "image_path", "theme", "decorationtype", "Warnings"
     ]
     df_out.to_csv(output_csv, index=False, columns=fieldnames, encoding="utf-8-sig")
     # Write TXT (tab-delimited)

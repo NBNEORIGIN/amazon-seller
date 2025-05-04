@@ -15,6 +15,10 @@ import pandas as pd
 import sys
 sys.path.append(str(Path(__file__).parent / '002 D2C WRITER'))
 from regular_stakes import RegularStakesProcessor
+from bw_stakes import BWStakesProcessor
+from photo_stakes import PhotoStakesProcessor
+from bw_large_stakes import BWLargeStakesProcessor
+from coloured_large_photo_stakes import ColouredLargePhotoStakesProcessor
 
 class DropZone(QLabel):
     file_dropped = pyqtSignal(list)  # Signal to emit list of file paths
@@ -73,6 +77,12 @@ class MainWindow(QMainWindow):
         self.process_button.setEnabled(False)
         self.process_button.clicked.connect(self.process_orders)
         left_layout.addWidget(self.process_button)
+        # Add Create SVGs button (combined)
+        self.create_svgs_button = QPushButton('Create SVGs')
+        self.create_svgs_button.setFixedWidth(120)
+        self.create_svgs_button.setEnabled(True)
+        self.create_svgs_button.clicked.connect(self.create_all_svgs)
+        left_layout.addWidget(self.create_svgs_button)
         left_layout.addStretch(1)
 
         # --- Center pane: Table and controls ---
@@ -142,10 +152,6 @@ class MainWindow(QMainWindow):
         self.copy_button.clicked.connect(self.copy_table_to_clipboard)
         main_vlayout.addWidget(self.copy_button)
 
-        # SVG Generation button
-        self.svg_button = QPushButton('Generate Regular SVGs')
-        self.svg_button.clicked.connect(self.generate_regular_svgs)
-        main_vlayout.addWidget(self.svg_button)
 
         # Log/terminal output at the bottom
         self.log_output = QTextEdit()
@@ -203,20 +209,43 @@ class MainWindow(QMainWindow):
         if df is None or df.empty:
             self.last_df = None
             return
-        # Store full DataFrame for filtering
+        # --- Reorder columns so Decoration column follows Colour ---
+        try:
+            original_cols = list(df.columns)
+            normalized_map = {c.lower().replace(' ', '').replace('_', ''): c for c in original_cols}
+            # Possible variants
+            colour_keys = ['colour', 'color']
+            deco_keys = ['decorationtype', 'decorationtype2', 'decorationtype_', 'decoration', 'decorationtype ', 'decorationtype']
+            colour_col = next((normalized_map[k] for k in colour_keys if k in normalized_map), None)
+            deco_col = next((normalized_map[k] for k in deco_keys if k in normalized_map), None)
+            if colour_col and deco_col:
+                cols = original_cols.copy()
+                if cols.index(deco_col) != cols.index(colour_col) + 1:
+                    cols.remove(deco_col)
+                    cols.insert(cols.index(colour_col) + 1, deco_col)
+                    df = df[cols]
+                    self.log('Reordered columns: moved Decoration next to Colour.')
+        except Exception as err:
+            self.log(f'Column reorder warning: {err}')
+        # Store full DataFrame for filtering (with updated column order)
         self.last_df = df.copy()
         self.filtered_df = df.copy()
+        # Enable table editing
+        self.table.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.SelectedClicked | QAbstractItemView.EditKeyPressed)
+        # Connect cellChanged to update DataFrame
+        self.table.cellChanged.connect(self.on_table_cell_changed)
         self._render_table(df)
 
     def _render_table(self, df):
-        # Preferred column order
         self.table.setRowCount(len(df))
         self.table.setColumnCount(len(df.columns))
         self.table.setHorizontalHeaderLabels(df.columns)
+        self.table.blockSignals(True)  # Prevent cellChanged from firing during setup
         for row in range(len(df)):
             for col in range(len(df.columns)):
                 item = QTableWidgetItem(str(df.iat[row, col]))
                 self.table.setItem(row, col, item)
+        self.table.blockSignals(False)
         self.table.resizeColumnsToContents()
 
     def clear_table(self):
@@ -303,46 +332,58 @@ class MainWindow(QMainWindow):
         html = '''<style>
         a { color: #1976d2; text-decoration: underline; cursor: pointer; }
         a:hover { color: #0d47a1; }
-        ul { padding-left: 18px; }
+        table { border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #ddd; padding: 6px 12px; text-align: left; }
+        th { background: #f5f5f5; }
         </style>
-        <b>SVG and CSV Outputs:</b><br><ul>'''
+        <b>SVG and CSV Outputs:</b><br>
+        <table>
+            <tr><th>SVGs</th><th>CSVs</th></tr>'''
         for svg in svg_files:
             svg_path = os.path.abspath(os.path.join(output_dir, svg))
             csv_path = os.path.splitext(svg_path)[0] + '.csv'
             svg_link = f'<a href="file:///{svg_path}" title="Open SVG in your vector graphics software">{os.path.basename(svg_path)}</a>'
             if os.path.exists(csv_path):
                 csv_link = f'<a href="file:///{csv_path}" title="Open CSV in your spreadsheet software">{os.path.basename(csv_path)}</a>'
-                html += f'<li>{svg_link} &nbsp;|&nbsp; {csv_link}</li>'
             else:
-                html += f'<li>{svg_link}</li>'
-        html += '</ul>'
+                csv_link = ''
+            html += f'<tr><td>{svg_link}</td><td>{csv_link}</td></tr>'
+        html += '</table>'
         self.file_links_browser.setHtml(html)
 
-    def generate_regular_svgs(self):
+    def on_table_cell_changed(self, row, column):
+        # Update the filtered DataFrame when a cell is edited
+        new_value = self.table.item(row, column).text()
+        col_name = self.table.horizontalHeaderItem(column).text()
+        # Update the DataFrame in place
+        if self.filtered_df is not None:
+            self.filtered_df.iat[row, column] = new_value
+        # Optionally, update self.last_df as well if you want edits to persist through filtering
+
+    def create_all_svgs(self):
         # Use the currently filtered DataFrame
         if getattr(self, 'filtered_df', None) is None or self.filtered_df.empty:
             self.log('No data to generate SVGs.')
             return
         df = self.filtered_df.copy()
-        # Prompt for output directory
+        # Prompt for output directory ONCE
         output_dir = QFileDialog.getExistingDirectory(self, 'Select Output Directory')
         if not output_dir:
             self.log('SVG generation cancelled (no output directory selected).')
             return
-        # Automatically select graphics path
+        # Use this output_dir for both processors
         graphics_path = r'G:/My Drive/003 APPS/002 AmazonSeller/005 Assets/001 Graphics'
         if not os.path.exists(graphics_path):
             self.log(f'Graphics folder not found at {graphics_path}. Defaulting to home directory.')
             graphics_path = str(Path.home())
-        self.log(f'Generating Regular SVGs in {output_dir} using graphics from {graphics_path}...')
         try:
+            # --- Regular SVGs ---
+            self.log(f'Generating Regular SVGs in {output_dir} using graphics from {graphics_path}...')
             processor = RegularStakesProcessor(graphics_path, output_dir)
             processor.process_orders(df)
             # --- Update table with SVG paths ---
-            # Find generated SVGs in output_dir
             svg_files = [f for f in os.listdir(output_dir) if f.lower().endswith('.svg')]
             svg_files.sort()  # rely on batch order
-            # Map each row to a generated SVG (batching: 9 per SVG)
             image_paths = [''] * len(df)
             batch_size = 9
             for i, svg_file in enumerate(svg_files):
@@ -351,20 +392,99 @@ class MainWindow(QMainWindow):
                     idx = i * batch_size + j
                     if idx < len(df):
                         image_paths[idx] = svg_path
-            # Add or update 'image_path' column
-            df['image_path'] = image_paths
+            # df['image_path'] = image_paths  # BUG: Do not overwrite image_path, this field should always point to the photo JPG for photo stakes
             self.filtered_df = df
             self._render_table(df)
-            # Log first 10 image_path values for debugging
             sample_paths = df['image_path'].head(10).tolist()
             self.log('First 10 SVG image_path values: ' + str(sample_paths))
-            # Update right pane with SVG/CSV hyperlinks
-            self.list_output_files(output_dir)
-            self.log('Regular SVG generation complete! SVG file links updated.')
+            self.log('Regular SVG generation complete!')
+            # --- B&W SVGs ---
+            self.log(f'Generating B&W SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = BWStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('B&W SVG generation complete!')
+            # --- Photo SVGs ---
+            self.log(f'Generating Photo SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = PhotoStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('Photo SVG generation complete!')
+            # --- B&W Large Stakes SVGs ---
+            self.log(f'Generating B&W Large Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = BWLargeStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('B&W Large Stakes SVG generation complete!')
+            # --- Coloured Large Photo Stakes SVGs ---
+            self.log(f'Generating Coloured Large Photo Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = ColouredLargePhotoStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('Coloured Large Photo Stakes SVG generation complete!')
         except Exception as e:
             import traceback
             tb = traceback.format_exc()
-            self.log(f'Error during SVG generation:\n{tb}')
+            self.log(f'Error during SVG generation (Regular or B&W):\n{tb}')
+        # Update right pane with SVG/CSV hyperlinks
+        self.list_output_files(output_dir)
+        self.log('All SVG file links updated.')
+
+        # Use the currently filtered DataFrame
+        if getattr(self, 'filtered_df', None) is None or self.filtered_df.empty:
+            self.log('No data to generate B&W SVGs.')
+            return
+        df = self.filtered_df.copy()
+
+        # Automatically select graphics path
+        graphics_path = r'G:/My Drive/003 APPS/002 AmazonSeller/005 Assets/001 Graphics'
+        if not os.path.exists(graphics_path):
+            self.log(f'Graphics folder not found at {graphics_path}. Defaulting to home directory.')
+            graphics_path = str(Path.home())
+        try:
+            self.log(f'Generating Regular SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = RegularStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            # --- Update table with SVG paths ---
+            svg_files = [f for f in os.listdir(output_dir) if f.lower().endswith('.svg')]
+            svg_files.sort()  # rely on batch order
+            image_paths = [''] * len(df)
+            batch_size = 9
+            for i, svg_file in enumerate(svg_files):
+                svg_path = os.path.join(output_dir, svg_file)
+                for j in range(batch_size):
+                    idx = i * batch_size + j
+                    if idx < len(df):
+                        image_paths[idx] = svg_path
+            # df['image_path'] = image_paths  # BUG: Do not overwrite image_path, this field should always point to the photo JPG for photo stakes
+            self.filtered_df = df
+            self._render_table(df)
+            sample_paths = df['image_path'].head(10).tolist()
+            self.log('First 10 SVG image_path values: ' + str(sample_paths))
+            self.log('Regular SVG generation complete!')
+            # --- B&W SVGs ---
+            self.log(f'Generating B&W SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = BWStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('B&W SVG generation complete!')
+            # --- Photo SVGs ---
+            self.log(f'Generating Photo SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = PhotoStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('Photo SVG generation complete!')
+            # --- B&W Large Stakes SVGs ---
+            self.log(f'Generating B&W Large Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = BWLargeStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('B&W Large Stakes SVG generation complete!')
+            # --- Coloured Large Photo Stakes SVGs ---
+            self.log(f'Generating Coloured Large Photo Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
+            processor = ColouredLargePhotoStakesProcessor(graphics_path, output_dir)
+            processor.process_orders(df)
+            self.log('Coloured Large Photo Stakes SVG generation complete!')
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            self.log(f'Error during SVG generation (Regular or B&W):\n{tb}')
+        # Update right pane with SVG/CSV hyperlinks
+        self.list_output_files(output_dir)
+        self.log('All SVG file links updated.')
 
     def log(self, message):
         self.log_output.append(message)
