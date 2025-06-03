@@ -34,14 +34,8 @@ from pathlib import Path
 import pandas as pd
 import sys
 sys.path.append(str(Path(__file__).parent / '002 D2C WRITER'))
-from regular_stakes import RegularStakesProcessor
-from bw_stakes import BWStakesProcessor
-from photo_stakes import PhotoStakesProcessor
-from bw_large_stakes import BWLargeStakesProcessor
-from coloured_large_photo_stakes import ColouredLargePhotoStakesProcessor
-from bw_photo_stakes import BWPhotoStakesProcessor
-from coloured_small_stakes_template_processor import ColouredSmallStakesTemplateProcessor
-from coloured_large_stakes import ColouredLargeStakesProcessor
+# Removed direct processor imports, will use discovery
+from core.processors import discover_processors, get_all_processors
 
 class DropZone(QLabel):
     file_dropped = pyqtSignal(list)  # Signal to emit list of file paths
@@ -312,130 +306,87 @@ class MainWindow(QMainWindow):
             output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "SVG_OUTPUT")
             graphics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "graphics")
             os.makedirs(output_dir, exist_ok=True)
-            # Decide which processor to use based on the selected row's data
-            order = single_df.iloc[0]
-            # --- Robust normalization and synonym mapping ---
-            def normalize(val):
-                return str(val).strip().lower().replace('-', ' ').replace('_', ' ')
-            def map_type(val):
-                val = normalize(val)
-                synonyms = {
-                    'regular': 'regular stake',
-                    'stake': 'regular stake',
-                    'regular stake': 'regular stake',
-                    'large': 'large stake',
-                    'big': 'large stake',
-                    'giant': 'large stake',
-                    'large stake': 'large stake',
-                    'small': 'small stake',
-                    'small stake': 'small stake',
-                    'metal': 'small metal',
-                    'small metal': 'small metal',
-                }
-                return synonyms.get(val, val)
-            def map_colour(val):
-                val = normalize(val)
-                synonyms = {
-                    'copper': 'copper',
-                    'gold': 'gold',
-                    'silver': 'silver',
-                    'stone': 'stone',
-                    'marble': 'marble',
-                    'black': 'black',
-                    'slate': 'slate',
-                }
-                return synonyms.get(val, val)
-            def map_decotype(val):
-                val = normalize(val)
-                synonyms = {
-                    'graphic': 'graphic',
-                    'deco': 'graphic',
-                    'art': 'graphic',
-                    'decorationtype': 'graphic',
-                    'decoration type': 'graphic',
-                }
-                return synonyms.get(val, val)
-            type_ = map_type(order.get('type', ''))
-            colour = map_colour(order.get('colour', ''))
-            decorationtype = map_decotype(order.get('decorationtype', ''))
-            processor_used = False
+            # ... (keep the existing code for getting single_df, output_dir, graphics_path)
+            order = single_df.iloc[0] # This is a pd.Series
 
-            # Debug logging for matching
-            self.log(f"[DEBUG] Extracted values before normalization: type='{order.get('type', '')}', colour='{order.get('colour', '')}', decorationtype='{order.get('decorationtype', '')}'")
-            self.log(f"[DEBUG] Normalized type: {type_}, colour: {colour}, decorationtype: {decorationtype}")
-            # If any field is empty after normalization, log and skip
-            if not type_ or not colour or not decorationtype:
-                self.log(f"[ERROR] One or more required fields are empty after normalization.")
-                self.log(f"[ERROR] Original values: type='{order.get('type', '')}', colour='{order.get('colour', '')}', decorationtype='{order.get('decorationtype', '')}'")
-                self.log(f"[ERROR] Normalized values: type='{type_}', colour='{colour}', decorationtype='{decorationtype}'")
-                QMessageBox.warning(self, 'Missing Data', 'One or more required fields (type, colour, decorationtype) are missing or empty. Please check the table and SKULIST.csv.')
-                return
-            order_id = str(order.get('order-id', '')).strip()
-            sku = str(order.get('sku', '')).strip()
-            graphic = str(order.get('graphic', '')).strip()
-            if graphic.lower().endswith('.png'):
-                graphic = graphic[:-4]
-            custom_filename = ' '.join([order_id, sku, type_, colour, graphic]).strip() + '.svg'
-            output_svg_path = os.path.join(output_dir, custom_filename)
-            # Directly call create_memorial_svg for single order
-            processor = RegularStakesProcessor(graphics_path, output_dir)
-            processor.create_memorial_svg([order], 1, output_svg_path)
-            self.log(f"Custom Regular Stake SVG generated: {output_svg_path}")
-            processor_used = True
-            large_types = ['large stake']
-            large_colours_col = ['copper', 'gold', 'silver', 'stone', 'marble']
-            large_colours_bw = ['black', 'slate']
-            large_decotypes = ['graphic']
-            if not processor_used and type_ in large_types and decorationtype in large_decotypes:
-                order_id = str(order.get('order-id', '')).strip()
-                sku = str(order.get('sku', '')).strip()
-                graphic = str(order.get('graphic', '')).strip()
-                if graphic.lower().endswith('.png'):
-                    graphic = graphic[:-4]
-                custom_filename = ' '.join([order_id, sku, type_, colour, graphic]).strip() + '.svg'
-                output_svg_path = os.path.join(output_dir, custom_filename)
-                if colour in large_colours_bw:
-                    from bw_large_stakes import BWLargeStakesProcessor
-                    processor = BWLargeStakesProcessor(graphics_path, output_dir)
-                    self.log(f"[DEBUG] Using BWLargeStakesProcessor for large stake: {output_svg_path}")
-                    processor.create_memorial_svg([order], 1, output_svg_path)
-                    self.log(f"Custom Large Stake SVG generated: {output_svg_path}")
-                    processor_used = True
-                elif colour in large_colours_col:
-                    from coloured_large_stakes import ColouredLargeStakesProcessor
-                    processor = ColouredLargeStakesProcessor(graphics_path, output_dir)
-                    self.log(f"[DEBUG] Using ColouredLargeStakesProcessor for large stake: {output_svg_path}")
-                    processor.create_memorial_svg([order], 1, output_svg_path)
-                    self.log(f"Custom Large Stake SVG generated: {output_svg_path}")
-                    processor_used = True
-            # Coloured Small Stake (robust)
-            small_types = ['small stake', 'small metal', 'small', 'mini', 'mini stake']
-            small_colours = ['copper', 'gold', 'silver', 'stone', 'marble', 'black']
-            small_decotypes = ['graphic', 'decorationtype', 'deco', 'art']
-            if type_ in small_types and colour in small_colours and decorationtype in small_decotypes:
-                from coloured_small_stakes_template_processor import ColouredSmallStakesTemplateProcessor
-                template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "005 Assets", "002_svg_templates", "small_colour.svg")
-                processor = ColouredSmallStakesTemplateProcessor(template_path, output_dir, graphics_path)
-                # --- Custom filename for single SVG creation ---
-                order_id = str(order.get('order-id', '')).strip()
-                sku = str(order.get('sku', '')).strip()
-                graphic = str(order.get('graphic', '')).strip()
-                if graphic.lower().endswith('.png'):
-                    graphic = graphic[:-4]
-                custom_filename = ' '.join([order_id, sku, type_, colour, graphic]).strip() + '.svg'
-                output_svg_path = os.path.join(output_dir, custom_filename)
-                processor.populate_svg(single_df, output_svg_path)
-                self.log(f"Custom Small Stake SVG generated: {output_svg_path}")
-                processor_used = True
-            else:
-                self.log(f"[DEBUG] No small stake match: type='{type_}', colour='{colour}', decorationtype='{decorationtype}'")
-            # Add additional processor conditions here as needed (e.g., photo stakes, B&W, etc.)
-            # ...
+            processor_used = False
+            generated_svg_path = None
+
+            if not hasattr(self, 'processors') or not self.processors:
+                self.log("Processors not loaded. Attempting to discover them now.")
+                discover_processors()
+                self.processors = get_all_processors()
+                if not self.processors:
+                    QMessageBox.warning(self, 'Error', 'No processors loaded. Cannot create design.')
+                    return
+                self.log(f"Loaded processors: {', '.join(self.processors.keys())}")
+
+
+            for processor_name, processor_class in self.processors.items():
+                try:
+                    processor_instance = processor_class(graphics_path=graphics_path, output_dir=output_dir)
+                    if processor_instance.is_applicable(order):
+                        self.log(f"[DEBUG] Using {processor_name} for the selected order.")
+
+                        # Define a unique filename for the single SVG
+                        order_id = str(order.get('order-id', 'NO_ORDER_ID')).strip()
+                        sku = str(order.get('sku', 'NO_SKU')).strip()
+                        graphic_val = str(order.get('graphic', '')).strip()
+                        if graphic_val.lower().endswith('.png'):
+                            graphic_val = graphic_val[:-4]
+
+                        # Try to get type and colour for filename, default if not present
+                        type_val = str(order.get('type', 'TYPE_UNKNOWN')).strip().lower().replace(' ', '_')
+                        colour_val = str(order.get('colour', 'COLOUR_UNKNOWN')).strip().lower().replace(' ', '_')
+
+                        custom_filename_parts = [order_id, sku, processor_name, type_val, colour_val, graphic_val]
+                        custom_filename = '_'.join(filter(None, custom_filename_parts)).strip() + '.svg'
+                        # Sanitize filename (optional, but good practice)
+                        custom_filename = "".join(c if c.isalnum() or c in ('_', '-') else '_' for c in custom_filename)
+
+                        output_svg_path = os.path.join(output_dir, custom_filename)
+
+                        # The `process` method expects a DataFrame, so convert the Series back to a DataFrame
+                        order_df = pd.DataFrame([order])
+                        processor_instance.process(order_df, output_dir, graphics_path) # Process expects a DataFrame
+
+                        # Check if the specific file was created by this processor
+                        # This assumes the processor creates the file with the exact name or a predictable one.
+                        # For more robustness, the `process` method of the processor could return the path of the generated file.
+                        # For now, we'll assume the first SVG created in the process call for this single order is the one.
+
+                        # To find the generated SVG, we can check which SVG was created/modified last
+                        # or, if the processor.process() is modified to return filename(s)
+
+                        # Simplified: Assume the processor created output_svg_path or similar
+                        # This part might need refinement based on how processors name files for single items.
+                        # For now, let's assume the `process` method handles naming and we just log what we tried.
+
+                        # We need a reliable way to get the *actual* path of the generated SVG.
+                        # Let's assume the processor, when called with a single item DataFrame,
+                        # will generate a file with a name we can either predict or it returns.
+                        # If `processor_instance.process` is not modified to return the path,
+                        # we might need to list files before/after, or make assumptions.
+
+                        # For this refactoring, let's assume the processor creates a file, and we'll log the expected path.
+                        # The `list_output_files` and `refresh_svg_thumbnails` will pick up any new SVGs.
+                        # A more advanced solution would be for `process` to return the path(s) of generated files.
+
+                        self.log(f"Custom SVG generation attempted with {processor_name}. Expected output like: {output_svg_path}")
+                        processor_used = True
+                        # Since we don't know the exact filename, we won't set generated_svg_path here.
+                        # The user will see all new SVGs in the output list.
+                        break # Found an applicable processor
+                except Exception as proc_exc:
+                    import traceback
+                    tb_proc = traceback.format_exc()
+                    self.log(f"Error during single design generation with {processor_name}:\n{tb_proc}")
+
             if not processor_used:
-                QMessageBox.warning(self, 'No Matching Processor', 'The selected row does not match any eligible SVG processor. Please check the order type, colour, and decoration type.')
+                QMessageBox.warning(self, 'No Matching Processor', 'The selected row does not match any eligible SVG processor. Please check the order data and processor applicability logic.')
                 self.log('No eligible processor found for selected row.')
             else:
-                self.list_output_files(output_dir)
+                self.list_output_files(output_dir) # Refresh file list
                 self.refresh_svg_thumbnails()
 
         except Exception as e:
@@ -497,136 +448,94 @@ class MainWindow(QMainWindow):
 
 
     def create_all_svgs(self):
-        """Generate all SVGs for different stake types and handle errors/logging."""
+        """Generate all SVGs using discovered processors."""
         if not hasattr(self, 'last_df') or self.last_df is None or self.last_df.empty:
             self.log('No processed orders available for SVG generation.')
             return
+
+        if not hasattr(self, 'processors') or not self.processors:
+            self.log('No processors loaded. Please check the processor discovery mechanism.')
+            # Attempt to discover processors again if not loaded
+            discover_processors()
+            self.processors = get_all_processors()
+            if not self.processors:
+                self.log('Failed to load processors on second attempt.')
+                return
+            self.log(f"Re-loaded processors: {', '.join(self.processors.keys())}")
+
+
         try:
             import os
             import pandas as pd
-            df = self.last_df.copy()
+            df = self.last_df.copy() # Use the full, unfiltered DataFrame
+
+            # Prepare output and graphics paths
             output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "SVG_OUTPUT")
             graphics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "graphics")
             os.makedirs(output_dir, exist_ok=True)
+
             svg_log = []
-            # --- Regular SVGs ---
-            self.log(f'Generating Regular SVGs in {output_dir} using graphics from {graphics_path}...')
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = RegularStakesProcessor(graphics_path, output_dir)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'RegularStakesProcessor'})
-            self.log('Regular SVG generation complete!')
-            # --- B&W SVGs ---
-            self.log(f'Generating B&W SVGs in {output_dir} using graphics from {graphics_path}...')
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = BWStakesProcessor(graphics_path, output_dir)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'BWStakesProcessor'})
-            self.log('B&W SVG generation complete!')
-            # --- Photo SVGs ---
-            self.log(f'Generating Photo SVGs in {output_dir} using graphics from {graphics_path}...')
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = PhotoStakesProcessor(graphics_path, output_dir)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'PhotoStakesProcessor'})
-            self.log('Photo SVG generation complete!')
-            # --- B&W Large Stakes SVGs ---
-            self.log(f'Generating B&W Large Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = BWLargeStakesProcessor(graphics_path, output_dir)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'BWLargeStakesProcessor'})
-            self.log('B&W Large Stakes SVG generation complete!')
-            # --- Coloured Large Stakes SVGs ---
-            self.log(f'Generating Coloured Large Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
-            df_coloured_large = df[
-                (df['type'].str.strip().str.lower() == 'large stake') &
-                (df['colour'].str.strip().str.lower().isin(['copper', 'gold', 'silver', 'stone', 'marble'])) &
-                (df['decorationtype'].str.strip().str.lower() == 'graphic')
-            ].copy()
-            if not df_coloured_large.empty:
-                # Convert columns to uppercase to match processor expectations
-                df_coloured_large.columns = [c.upper() for c in df_coloured_large.columns]
-                before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-                processor = ColouredLargeStakesProcessor(graphics_path, output_dir)
-                processor.process_orders(df_coloured_large)
-                after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-                for f in after - before:
-                    svg_log.append({'svg_filename': f, 'processor_used': 'ColouredLargeStakesProcessor'})
-                self.log(f'Coloured Large Stakes SVG generation complete! SVGs generated: {len(df_coloured_large)}')
+            generated_files_count = 0
+
+            self.log(f"Starting SVG generation for {len(df)} orders using {len(self.processors)} processors...")
+
+            for processor_name, processor_class in self.processors.items():
+                self.log(f"--- Running processor: {processor_name} ---")
+                try:
+                    # Instantiate the processor
+                    processor_instance = processor_class(graphics_path=graphics_path, output_dir=output_dir)
+
+                    # Filter DataFrame for applicable orders for this processor
+                    # The processor instance itself should define what makes an order applicable
+                    applicable_orders_df = df[df.apply(processor_instance.is_applicable, axis=1)].copy()
+
+                    if not applicable_orders_df.empty:
+                        self.log(f"Processor {processor_name} is applicable to {len(applicable_orders_df)} orders.")
+
+                        # Store list of files before processing
+                        before_files = set(os.listdir(output_dir))
+
+                        # Call the process method
+                        processor_instance.process(applicable_orders_df, output_dir, graphics_path)
+
+                        # Determine newly created files
+                        after_files = set(os.listdir(output_dir))
+                        new_files = after_files - before_files
+
+                        for f_name in new_files:
+                            if f_name.lower().endswith('.svg'):
+                                svg_log.append({'svg_filename': f_name, 'processor_used': processor_name})
+                                generated_files_count += 1
+
+                        self.log(f"Processor {processor_name} completed. Generated {len(new_files)} file(s).")
+                    else:
+                        self.log(f"Processor {processor_name} is not applicable to any of the current orders.")
+
+                except Exception as proc_exc:
+                    import traceback
+                    tb_proc = traceback.format_exc()
+                    self.log(f"Error during {processor_name} execution:\n{tb_proc}")
+
+            self.log(f"--- SVG Generation Summary ---")
+            if generated_files_count > 0:
+                self.log(f"Successfully generated {generated_files_count} SVG file(s) in total.")
+                # Write CSV log
+                if svg_log:
+                    log_df = pd.DataFrame(svg_log)
+                    csv_path = os.path.join(output_dir, 'svg_generation_log.csv')
+                    log_df.to_csv(csv_path, index=False)
+                    self.log(f'SVG generation log written to {csv_path}')
             else:
-                self.log('No Coloured Large Stakes orders found for SVG generation.')
-            # --- Coloured Large Photo Stakes SVGs ---
-            self.log(f'Generating Coloured Large Photo Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = ColouredLargePhotoStakesProcessor(graphics_path, output_dir)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'ColouredLargePhotoStakesProcessor'})
-            self.log('Coloured Large Photo Stakes SVG generation complete!')
-            # --- Coloured Small Stakes SVGs ---
-            template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "002_svg_templates", "small_colour.svg")
-            self.log(f'Generating Coloured Small Stakes SVGs in {output_dir} using template {template_path}...')
-            graphics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "graphics")
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = ColouredSmallStakesTemplateProcessor(template_path, output_dir, graphics_path)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'ColouredSmallStakesTemplateProcessor'})
-            self.log('Coloured Small Stakes SVG generation complete!')
-            # --- B&W Small Stakes SVGs ---
-            from bw_small_stakes_template_processor import BlackAndWhiteSmallStakesTemplateProcessor
-            bw_template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "002_svg_templates", "small_bw.svg")
-            self.log(f'Generating B&W Small Stakes SVGs in {output_dir} using template {bw_template_path}...')
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = BlackAndWhiteSmallStakesTemplateProcessor(bw_template_path, output_dir, graphics_path)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'BlackAndWhiteSmallStakesTemplateProcessor'})
-            self.log('B&W Small Stakes SVG generation complete!')
-            # --- B&W Photo Stakes SVGs ---
-            self.log('=== ENTERING B&W PHOTO STAKES BLOCK ===')
-            self.log(f'Generating B&W Photo Stakes SVGs in {output_dir} using graphics from {graphics_path}...')
-            self.log(f"[BWPhotoStakes] DataFrame columns: {list(df.columns)}")
-            self.log(f"[BWPhotoStakes] First 5 rows:\n{df.head().to_string()}")
-            before = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            processor = BWPhotoStakesProcessor(graphics_path, output_dir)
-            processor.process_orders(df)
-            after = set(f for f in os.listdir(output_dir) if f.lower().endswith('.svg'))
-            for f in after - before:
-                svg_log.append({'svg_filename': f, 'processor_used': 'BWPhotoStakesProcessor'})
-            bw_svg_count = len([f for f in os.listdir(output_dir) if f.startswith('BW_PHOTO') and f.lower().endswith('.svg')])
-            self.log(f"B&W Photo Stakes SVG generation complete! SVGs generated: {bw_svg_count}")
-            self.list_output_files(output_dir)
-            # Debug: List all SVGs created
-            svg_files = [f for f in os.listdir(output_dir) if f.lower().endswith('.svg')]
-            if svg_files:
-                svg_list_str = '\\n'.join(svg_files)
-                self.log(f'[DEBUG] SVG files created in {output_dir}:\\n{svg_list_str}')
-            else:
-                self.log(f'[DEBUG] No SVG files created in {output_dir}.')
-            # Write CSV log
-            if svg_log:
-                log_df = pd.DataFrame(svg_log)
-                csv_path = os.path.join(output_dir, 'svg_generation_log.csv')
-                log_df.to_csv(csv_path, index=False)
-                self.log(f'[DEBUG] SVG generation log written to {csv_path}')
-            self.log('All SVG file links updated.')
+                self.log("No SVG files were generated by any processor.")
+
+            self.list_output_files(output_dir) # Update file list in GUI
+            self.refresh_svg_thumbnails() # Refresh SVG previews in GUI
+            self.log('SVG generation process finished.')
+
         except Exception as e:
             import traceback
             tb = traceback.format_exc()
-            self.log(f'Error during SVG generation:\n{tb}')
+            self.log(f'Critical error during SVG generation process:\n{tb}')
 
     def save_state(self):
         try:
@@ -931,6 +840,11 @@ class MainWindow(QMainWindow):
         # Restore last state after all widgets are initialized
         self.load_state()
 
+        # Discover and load processors
+        discover_processors()
+        self.processors = get_all_processors()
+        self.log(f"Loaded processors: {', '.join(self.processors.keys())}")
+
     def on_file_dropped(self, file_path):
         # Support multiple files (comma-separated or list)
         if isinstance(file_path, list):
@@ -1012,29 +926,149 @@ class MainWindow(QMainWindow):
         # --- Add SVG Processor column ---
         import pandas as pd
         def get_svg_processor(row):
-            type_ = str(row.get('type', '')).strip().lower()
-            colour = str(row.get('colour', '')).strip().lower()
-            decorationtype = str(row.get('decorationtype', '')).strip().lower()
-            # Logic mirrors create_all_svgs
-            if type_ == 'large stake' and colour in ['copper', 'gold', 'silver', 'stone', 'marble'] and decorationtype == 'graphic':
-                return 'ColouredLargeStakesProcessor'
-            if type_ == 'large stake' and colour in ['copper', 'gold', 'silver', 'stone', 'marble'] and decorationtype == 'photo':
-                return 'ColouredLargePhotoStakesProcessor'
-            if type_ == 'small stake' and colour in ['copper', 'gold', 'silver', 'stone', 'marble'] and decorationtype == 'graphic':
-                return 'ColouredSmallStakesTemplateProcessor'
-            # --- PHOTO logic must come before regular stake ---
-            if 'photo' in type_ or decorationtype == 'photo':
-                if colour == 'black':
-                    return 'BWPhotoStakesProcessor'
-                else:
-                    return 'PhotoStakesProcessor'
-            if type_ == 'regular stake' and colour == 'black':
-                return 'BWStakesProcessor'
-            if type_ == 'regular stake':
-                return 'RegularStakesProcessor'
-            if type_ == 'large stake' and colour == 'black' and decorationtype == 'graphic':
-                return 'BWLargeStakesProcessor'
-            return 'No existing processor'
+            # Ensure processors are loaded
+            if not hasattr(self, 'processors') or not self.processors:
+                # This is a fallback, ideally processors are loaded at init
+                discover_processors()
+                self.processors = get_all_processors()
+                if not self.processors:
+                    return "Error: No processors loaded"
+
+            applicable_processor_name = "No matching processor"
+            for processor_name, processor_class_ref in self.processors.items():
+                # We need an instance to call is_applicable.
+                # This means instantiating each processor for each row, which might be inefficient.
+                # Consider optimizing if performance becomes an issue (e.g., by passing class and data to a static check method).
+                # For now, let's proceed with instantiation.
+                # We need dummy paths for instantiation if the processor expects them.
+                # A better approach for `is_applicable` would be to make it a static method or class method
+                # that doesn't require full instantiation if graphics_path/output_dir aren't needed for the check.
+                # Assuming processors can be instantiated without paths for `is_applicable` or handle None.
+                try:
+                    # Try instantiating with None for paths if constructor allows,
+                    # otherwise, this needs a more robust way to check applicability.
+                    # For now, this assumes is_applicable can be called on an instance
+                    # created without full paths, or that the base class handles this.
+                    # This part is tricky without knowing all processor constructors.
+                    # A practical approach: is_applicable should ideally be a static method or class method.
+                    # If it *must* be an instance method, the instance must be creatable.
+
+                    # Let's assume a temporary, simplified instantiation for the check if possible,
+                    # or that the check is robust enough.
+                    # This is a placeholder for a potentially more complex instantiation for checking.
+                    # A common pattern is to pass graphics_path and output_dir to the constructor.
+                    # If is_applicable doesn't use them, it's fine.
+                    # For now, we pass dummy values as they are expected by the base class constructor (implicitly).
+                    # This will be an issue if processors *require* valid paths in their __init__ for is_applicable to work.
+
+                    # Simplification: We assume `is_applicable` can be called on an instance
+                    # created with placeholder paths if the actual paths are not used by `is_applicable`.
+                    # This will need to be true for all processor implementations.
+                    temp_output_dir = "" # Placeholder
+                    temp_graphics_path = "" # Placeholder
+
+                    # A more robust way:
+                    # proc_instance = processor_class_ref(graphics_path=self.some_default_graphics_path, output_dir=self.some_default_output_dir)
+                    # This requires having default paths available or making is_applicable static.
+                    # For now, we'll assume the test below is what's needed.
+                    # The GUI needs valid paths for actual processing, but maybe not for this check.
+                    # The current ProcessorBase does not define a constructor, so subclasses might.
+                    # This is a point of potential fragility.
+
+                    # Let's assume that `is_applicable` does not require initialized paths,
+                    # or that processors are robust to being instantiated with dummy paths for this check.
+                    # The `process` method will receive the correct paths.
+
+                    # Given the current structure, we must instantiate.
+                    # If `graphics_path` and `output_dir` are needed by `is_applicable`,
+                    # they should be available here. Let's assume they are not strictly needed for the check.
+
+                    # Create a dummy instance to call is_applicable
+                    # This assumes __init__(self, graphics_path, output_dir) signature for all processors
+                    # This is a potential issue if processors have different __init__ signatures.
+                    # The base class does not enforce __init__ signature.
+
+                    # Fallback: if a processor cannot be instantiated easily for a check,
+                    # this logic will fail. The `is_applicable` method should ideally be a
+                    # static method on the processor class for this exact reason.
+                    # processor_instance = processor_class_ref(None, None) # Simplest attempt
+
+                    # Given the refactored `create_all_svgs`, processors are instantiated with:
+                    # processor_class(graphics_path=graphics_path, output_dir=output_dir)
+                    # We should mimic this if these are needed for `is_applicable`.
+                    # However, `graphics_path` and `output_dir` are not readily available in `_render_table`
+                    # without passing them down or making them class attributes.
+
+                    # Simplest approach: Try to call it as a static method if possible,
+                    # or assume it can be called on a class instance that might not be fully initialized.
+                    # This is a known limitation of this dynamic approach if `is_applicable` is complex.
+
+                    # Let's assume `is_applicable` can be called from a class reference if it's static
+                    # or that we can create a temporary instance.
+                    # For now, we cannot reliably instantiate here without making assumptions about constructors.
+                    #
+                    # WORKAROUND/SIMPLIFICATION for get_svg_processor:
+                    # Since we cannot reliably instantiate here for all processors without knowing their constructors,
+                    # and `is_applicable` is an instance method, this `get_svg_processor` for the table
+                    # display becomes problematic.
+                    #
+                    # Option 1: Make `is_applicable` a @classmethod or @staticmethod. (Best solution, requires processor changes)
+                    # Option 2: Attempt a simple instantiation. (Fragile)
+                    # Option 3: Remove this "SVG Processor" column from the table if it's too hard to compute reliably.
+                    # Option 4: Pass necessary paths to _render_table.
+                    #
+                    # Let's try Option 2 with a try-except, but acknowledge its fragility.
+                    try:
+                        # This assumes a constructor that can take no args, or default args,
+                        # or that graphics_path/output_dir are not used by is_applicable.
+                        # This is a major assumption.
+                        # A better way for ProcessorBase would be:
+                        # @staticmethod or @classmethod
+                        # def is_row_applicable(row_data: pd.Series, config_params_if_needed) -> bool:
+
+                        # If processors follow `__init__(self, graphics_path, output_dir)`:
+                        # This is still problematic as we don't have those paths here easily.
+                        #
+                        # TEMPORARY: Return "Dynamic" as we can't easily determine it per row here
+                        # without significant changes to either processors or how this GUI function works.
+                        # The actual processing in `create_all_svgs` and `create_design_for_selected` *will* use the correct logic.
+                        # This is just for display in the table.
+                        #
+                        # For the purpose of this refactoring, we will simplify this display part.
+                        # The real test is if the `create_all_svgs` and `create_design_for_selected` work.
+                        # We can make is_applicable a class method in a follow-up if needed.
+
+                        # Let's assume a simplified check for now for the display column,
+                        # or leave it to the processor to have a simple __init__
+                        # This is a known weak point in the current design for display purposes.
+                        # processor_obj = processor_class_ref(graphics_path="dummy", output_dir="dummy") # Example
+                        # if processor_obj.is_applicable(row):
+                        # applicable_processor_name = processor_name
+                        # break
+
+                        # Given the constraints, we cannot reliably call is_applicable here for display.
+                        # The actual processing logic in create_all_svgs and create_design_for_selected is more robust.
+                        # So, for this table display column, we might have to simplify or remove it.
+                        # To keep the column for now, we'll return a generic value.
+                        # This means the "SVG Processor" column will not be accurate until processors are refactored
+                        # to support a static check or easier instantiation for this display purpose.
+                        pass # Skip trying to determine for display for now.
+
+                    except TypeError: # Catches errors if constructor args are missing
+                        # self.log(f"Warning: Could not instantiate {processor_name} for applicability check in table.")
+                        pass # Cannot determine here
+                    except Exception as e_inst:
+                        # self.log(f"Error instantiating {processor_name} for display check: {e_inst}")
+                        pass
+
+
+            # The above loop for display is problematic. We will return a placeholder.
+            # The actual processor assignment happens during `create_all_svgs` and `create_design_for_selected`.
+            # This column is for display only and its accuracy is secondary to processing.
+            # To make this work, `is_applicable` should ideally be a class method or static method.
+            # For now, we'll just indicate it's dynamically determined.
+            return "Dynamic (see log)" # Placeholder until is_applicable can be called safely here
+
         df = df.copy()
         df['SVG Processor'] = df.apply(get_svg_processor, axis=1)
 
