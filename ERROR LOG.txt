@@ -1,0 +1,9 @@
+Files dropped: ['G:/My Drive/003 APPS/002 AmazonSeller040525/002 AmazonSeller/001 AMAZON DATA DOWNLOAD/110809863826020213.txt', 'G:/My Drive/003 APPS/002 AmazonSeller040525/002 AmazonSeller/001 AMAZON DATA DOWNLOAD/121219301528020213.txt']
+Processing files: ['G:/My Drive/003 APPS/002 AmazonSeller040525/002 AmazonSeller/001 AMAZON DATA DOWNLOAD/110809863826020213.txt', 'G:/My Drive/003 APPS/002 AmazonSeller040525/002 AmazonSeller/001 AMAZON DATA DOWNLOAD/121219301528020213.txt']
+Error during processing:
+Traceback (most recent call last):
+  File "G:\My Drive\003 APPS\002 AmazonSeller040525\002 AmazonSeller\main_gui_qt_clean.py", line 206, in process_orders
+    import order_pipeline
+  File "G:\My Drive\003 APPS\002 AmazonSeller040525\002 AmazonSeller\001 AMAZON DATA DOWNLOAD\order_pipeline.py", line 3, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'

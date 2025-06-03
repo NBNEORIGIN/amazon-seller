@@ -2,6 +2,10 @@ import os
 import svgwrite
 from memorial_base import MemorialBase
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos
+from core.processors.svg_utils import draw_rounded_rect, add_multiline_text
 
 class ColouredLargeStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
@@ -49,7 +53,7 @@ class ColouredLargeStakesProcessor(MemorialBase):
                 batch_num += 1
 
     def create_memorial_svg(self, orders, batch_num):
-        filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
+        filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}_No Jig.svg"
         filepath = os.path.join(self.OUTPUT_DIR, filename)
         print(f"Creating SVG file: {filepath}")
         dwg = svgwrite.Drawing(
@@ -71,8 +75,11 @@ class ColouredLargeStakesProcessor(MemorialBase):
             print(f"Adding memorial {idx+1} at position ({x}, {y})")
             self.add_memorial(dwg, x, y, order)
         # Add reference point (blue pixel in bottom right)
+        # Move blue reference square down by 0.05mm (convert mm to px using viewbox_height/page_height_mm)
+        blue_square_x = self.viewbox_width - 0.38
+        blue_square_y = self.viewbox_height - 0.38 + (0.05 * self.viewbox_height / self.page_height_mm)
         dwg.add(dwg.rect(
-            insert=(self.viewbox_width - 0.38, self.viewbox_height - 0.38),
+            insert=(blue_square_x, blue_square_y),
             size=(0.38, 0.38),
             fill="blue"
         ))
@@ -82,43 +89,90 @@ class ColouredLargeStakesProcessor(MemorialBase):
 
     def add_memorial(self, dwg, x, y, order):
         # Draw rounded rectangle for the memorial
-        dwg.add(dwg.rect(
+        # Use shared SVG utility for rounded rectangle
+        dwg.add(draw_rounded_rect(
+            dwg,
             insert=(x, y),
             size=(self.memorial_width_px, self.memorial_height_px),
             rx=self.corner_radius_px,
             ry=self.corner_radius_px,
             fill='white',  # Could be changed based on COLOUR
-            stroke='black',
+            stroke='red',
             stroke_width=self.stroke_width
         ))
+        # --- Embed graphic if present (logic from RegularStakesProcessor) ---
+        graphic_filename = order.get('GRAPHIC')
+        if graphic_filename:
+            graphic_path = os.path.join(self.graphics_path, str(graphic_filename))
+            print(f"Looking for graphic: {graphic_path}")
+            if os.path.exists(graphic_path):
+                print(f"Found graphic: {graphic_path}")
+                embedded_image = self.embed_image(graphic_path)
+                if embedded_image:
+                    # Center the image in the memorial rectangle
+                    dwg.add(dwg.image(
+                        href=embedded_image,
+                        insert=(x, y),
+                        size=(self.memorial_width_px, self.memorial_height_px)
+                    ))
+                else:
+                    print(f"Failed to embed graphic")
+            else:
+                print(f"Warning: Graphic not found: {graphic_path}")
         # Place text fields (assume LINE_1, LINE_2, LINE_3)
         # Adjust these positions as needed
         center_x = x + self.memorial_width_px / 2
         # Example vertical offsets for text lines
-        y1 = y + 80
-        y2 = y + 180
-        y3 = y + 260
-        dwg.add(dwg.text(
-            order.get('LINE_1', ''),
+        # If THEME is 'Islamic', move Line 1 and Line 2 down by 40mm (converted to px)
+        theme = str(order.get('THEME', '')).strip().lower()
+        y1_offset = 80
+        y2_offset = 180
+        line2_size_pt = self.line2_size_pt
+        if theme == 'islamic':
+            px_per_mm = self.viewbox_width / self.page_width_mm
+            y1_offset += 40 * px_per_mm  # Move Line 1 down by 40mm
+            y2_offset += 30 * px_per_mm  # Move Line 2 down by 30mm (40mm - 10mm)
+            line2_size_pt = self.line2_size_pt * 0.5  # Reduce Line 2 size by 50%
+        y1 = y + y1_offset
+        y2 = y + y2_offset
+        y3 = y + 260  # Line 3 unchanged
+        # Use shared SVG utility for multi-line text. For now, treat each line as a single-item list for compatibility.
+        # Line 1: wrap and grammar check
+        line1 = order.get('LINE_1', '')
+        check_grammar_and_typos(line1)  # Grammar check (optional: handle result)
+        line1_lines = split_line_to_fit(str(line1), 30)
+        dwg.add(add_multiline_text(
+            dwg,
+            line1_lines,
             insert=(center_x, y1),
             font_size=f"{self.line1_size_pt}px",
             font_family="Georgia",
-            text_anchor="middle",
+            anchor="middle",
             fill="black"
         ))
-        dwg.add(dwg.text(
-            order.get('LINE_2', ''),
+        # Line 2: wrap and grammar check
+        line2 = order.get('LINE_2', '')
+        check_grammar_and_typos(line2)
+        line2_lines = split_line_to_fit(str(line2), 30)
+        dwg.add(add_multiline_text(
+            dwg,
+            line2_lines,
             insert=(center_x, y2),
-            font_size=f"{self.line2_size_pt}px",
+            font_size=f"{line2_size_pt}px",
             font_family="Georgia",
-            text_anchor="middle",
+            anchor="middle",
             fill="black"
         ))
-        dwg.add(dwg.text(
-            order.get('LINE_3', ''),
+        # Line 3: wrap and grammar check
+        line3 = order.get('LINE_3', '')
+        check_grammar_and_typos(line3)
+        line3_lines = split_line_to_fit(str(line3), 30)
+        dwg.add(add_multiline_text(
+            dwg,
+            line3_lines,
             insert=(center_x, y3),
             font_size=f"{self.line3_size_pt}px",
             font_family="Georgia",
-            text_anchor="middle",
+            anchor="middle",
             fill="black"
         ))

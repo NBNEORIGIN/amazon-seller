@@ -193,37 +193,58 @@ def main():
     temp_dir = tempfile.mkdtemp()
     downloads_dir = os.path.join(temp_dir, "downloads")
     os.makedirs(downloads_dir, exist_ok=True)
+    print(f"[DEBUG] Temp downloads directory: {downloads_dir}")
     output_rows = []
-    images_dir = r"G:\My Drive\003 APPS\002 AmazonSeller\004 IMAGES"
+    # Always resolve '004 IMAGES' relative to the project root (where this script is located)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    images_dir = os.path.join(project_root, '004 IMAGES')
     os.makedirs(images_dir, exist_ok=True)
-    for order in all_orders:
+    for i, order in enumerate(all_orders):
         order_folder = os.path.join(downloads_dir, f"{order['order-id']}_{order['order-item-id']}")
         os.makedirs(order_folder, exist_ok=True)
+        print(f"[DEBUG] Processing order: {order['order-id']}, item: {order['order-item-id']}")
+        print(f"[DEBUG] Order folder: {order_folder}")
         image_path = ""
+        print(f"[DEBUG] Downloading and extracting ZIP: {order.get('zip_url')}")
         if download_and_extract_zip(order["zip_url"], order_folder):
+            print(f"Downloaded zip file {i+1} of {len(all_orders)}")
+            print(f"[DEBUG] ZIP extracted to: {order_folder}")
+            print(f"[DEBUG] Files in extracted folder: {os.listdir(order_folder)}")
             # Find the first XML in the extracted folder
             xml_files = [f for f in os.listdir(order_folder) if f.endswith('.xml')]
             if xml_files:
                 xml_path = os.path.join(order_folder, xml_files[0])
+                print(f"[DEBUG] Found XML file: {xml_path}")
                 graphic, line_1, line_2, line_3 = parse_xml_for_fields(xml_path)
             else:
+                print(f"[DEBUG] No XML file found in {order_folder}")
                 graphic = line_1 = line_2 = line_3 = ""
             # Find jpg images
             jpg_files = [f for f in os.listdir(order_folder) if f.lower().endswith('.jpg')]
+            print(f"[DEBUG] JPG files found: {jpg_files}")
+            image_path_out = ""
             if jpg_files:
                 # Pick the largest file
                 jpg_files_full = [os.path.join(order_folder, f) for f in jpg_files]
                 largest_jpg = max(jpg_files_full, key=os.path.getsize)
+                print(f"[DEBUG] Copying largest JPG: {largest_jpg}")
                 # Rename and copy to images_dir
                 new_image_name = f"{order['order-item-id']}.jpg"
                 dest_path = os.path.join(images_dir, new_image_name)
                 try:
                     import shutil
                     shutil.copy2(largest_jpg, dest_path)
-                    image_path = dest_path
+                    print(f"[DEBUG] Copied image to: {dest_path}")
+                    image_path = os.path.join(images_dir, new_image_name)  # full path for copying
+                    # For output, use only the filename
+                    image_path_out = new_image_name
                 except Exception as e:
-                    print(f"Failed to copy image for order {order['order-item-id']}: {e}")
+                    print(f"[DEBUG] Failed to copy image for order {order['order-item-id']}: {e}")
+            else:
+                print(f"[DEBUG] No JPG files found in {order_folder}")
+                image_path_out = ""
         else:
+            print(f"[DEBUG] Failed to download or extract ZIP for order {order['order-id']} item {order['order-item-id']}")
             graphic = line_1 = line_2 = line_3 = ""
         sku_info = skulookup.get(order["sku"].strip(), {})
         row = {
@@ -237,7 +258,7 @@ def main():
             "line_1": line_1,
             "line_2": line_2,
             "line_3": line_3,
-            "image_path": image_path
+            "image_path": image_path_out
         }
         row["Warnings"] = generate_warnings(row)
         output_rows.append(row)

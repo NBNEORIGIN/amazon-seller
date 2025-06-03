@@ -113,7 +113,6 @@ def extract_zip_urls_and_meta_from_report(report_path):
     return orders
 
 def load_skulist(skulist_file):
-    import os
     skulookup = {}
     print(f"Attempting to load SKULIST from: {skulist_file}")
     if not skulist_file or not os.path.exists(skulist_file):
@@ -176,14 +175,26 @@ def generate_warnings(row):
                     warnings.append(f"Future year found in {key}: {match}")
     return "; ".join(warnings)
 
-def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=None):
+def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=None, status_callback=None):
     # Force images_dir to canonical location
-    images_dir = r'G:/My Drive/003 APPS/002 AmazonSeller/004 IMAGES'
+    # Dynamically resolve images_dir relative to the script's location for portability
+    images_dir = 'images'
+    print(f"[DEBUG] Resolved images_dir (relative): {os.path.abspath(images_dir)}")
+    # --- WINDSURF PATCH: Clean images directory before extracting any new images (rollback: remove this block) ---
+    if os.path.exists(images_dir):
+        image_files = [f for f in os.listdir(images_dir) if os.path.isfile(os.path.join(images_dir, f))]
+        if image_files:
+            print(f"[DEBUG] Deleting {len(image_files)} files from images directory...")
+            for f in image_files:
+                try:
+                    os.remove(os.path.join(images_dir, f))
+                except Exception as e:
+                    print(f"[ERROR] Could not delete {f}: {e}")
+    # --- END WINDSURF PATCH ---
     # Accepts a list of report files or a single file
     if isinstance(report_paths, str):
         report_paths = [report_paths]
 
-    import os
     import csv
     import tempfile
     import shutil
@@ -203,11 +214,15 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
     os.makedirs(downloads_dir, exist_ok=True)
     output_rows = []
     os.makedirs(images_dir, exist_ok=True)
-    for order in all_orders:
+    for i, order in enumerate(all_orders):
         order_folder = os.path.join(downloads_dir, f"{order['order-id']}_{order['order-item-id']}")
         os.makedirs(order_folder, exist_ok=True)
         image_path = ""
         if download_and_extract_zip(order["zip_url"], order_folder):
+            if status_callback:
+                status_callback(f"Downloaded zip file {i+1} of {len(all_orders)}")
+            else:
+                print(f"Downloaded zip file {i+1} of {len(all_orders)}")
             xml_files = [f for f in os.listdir(order_folder) if f.endswith('.xml')]
             if xml_files:
                 xml_path = os.path.join(order_folder, xml_files[0])
@@ -220,11 +235,18 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
                 largest_jpg = max(jpg_files_full, key=os.path.getsize)
                 new_image_name = f"{order['order-item-id']}.jpg"
                 dest_path = os.path.join(images_dir, new_image_name)
+                print(f"[DEBUG] Preparing to copy image to: {dest_path}")
                 try:
                     shutil.copy2(largest_jpg, dest_path)
-                    image_path = dest_path
-                except Exception as e:
-                    print(f"Failed to copy image for order {order['order-item-id']}: {e}")
+                    print(f"[DEBUG] Successfully copied image to: {dest_path}")
+                    image_path = os.path.join('images', new_image_name).replace('\\', '/')
+                    print(f"[DEBUG] Final image_path for CSV: {image_path}")
+                except Exception as copy_err:
+                    print(f"[ERROR] Failed to copy image {largest_jpg} to {dest_path}: {copy_err}")
+                    image_path = ""
+            else:
+                print(f"[WARNING] No .jpg file found for order {order['order-item-id']}")
+                image_path = ""
         else:
             graphic = line_1 = line_2 = line_3 = ""
         original_sku = str(order["sku"]).strip()
@@ -279,8 +301,21 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
             else:
                 warning_text = missing_sku_warning
         row["Warnings"] = warning_text
+        print(f"[DEBUG] Writing row to CSV: {row}")
         output_rows.append(row)
     df_out = pd.DataFrame(output_rows)
+    # --- WINDSURF PATCH: Set 'graphic' to 'Photo' for photo products (rollback: remove this block) ---
+    if 'graphic' in df_out.columns and 'decorationtype' in df_out.columns:
+        print('DEBUG BEFORE PATCH:')
+        print(df_out[['graphic', 'decorationtype']].head(20))
+        mask = df_out['decorationtype'].astype(str).str.strip().str.lower() == 'photo'
+        print('DEBUG MASK SUM:', mask.sum())
+        print('DEBUG ROWS TO PATCH:')
+        print(df_out[mask][['graphic', 'decorationtype']])
+        df_out.loc[mask, 'graphic'] = 'Photo'
+        print('DEBUG AFTER PATCH:')
+        print(df_out[mask][['graphic', 'decorationtype']])
+    # --- END WINDSURF PATCH ---
     # Write CSV (comma-delimited)
     output_csv = os.path.join(output_dir, "output.csv")
     fieldnames = [

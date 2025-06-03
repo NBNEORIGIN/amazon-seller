@@ -1,6 +1,24 @@
 print("RUNNING main_gui_qt.py FROM:", __file__)
 import sys
 import os
+# --- Auto-install dependencies if missing ---
+try:
+    import pandas
+    import numpy
+    import matplotlib
+    import seaborn
+    import PyQt5
+    import pyperclip
+except ImportError:
+    import subprocess
+    import pathlib
+    installer = pathlib.Path(__file__).parent / 'install_requirements.py'
+    print('Some dependencies are missing. Attempting to install them...')
+    subprocess.check_call([sys.executable, str(installer)])
+    print('Dependencies installed. Please restart the application if you see errors.')
+    # Try importing again (optional, but best to exit and let user restart)
+    sys.exit(0)
+# --- End auto-install block ---
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QTextEdit, QFileDialog,
     QTableWidget, QTableWidgetItem, QAbstractItemView, QSplitter, QHBoxLayout, QLineEdit, QCheckBox, QMessageBox

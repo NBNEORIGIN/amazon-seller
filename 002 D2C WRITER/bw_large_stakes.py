@@ -122,10 +122,12 @@ class BWLargeStakesProcessor(MemorialBase):
                 ))
                 current_y += line_spacing
 
-    def create_memorial_svg(self, orders, batch_num):
-        filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
-        filepath = os.path.join(self.OUTPUT_DIR, filename)
-        
+    def create_memorial_svg(self, orders, batch_num, output_path=None):
+        if output_path is None:
+            filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
+            filepath = os.path.join(self.OUTPUT_DIR, filename)
+        else:
+            filepath = output_path
         # Create SVG with exact dimensions from sample
         dwg = svgwrite.Drawing(
             filepath,

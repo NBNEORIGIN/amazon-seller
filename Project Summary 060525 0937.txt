@@ -1,0 +1,56 @@
+Here is a detailed project summary capturing the current state, recent improvements, and key technical details. You can use this to reload the context and allow me (or any future assistant) to pick up exactly where we left off:
+
+Project Summary: Amazon Seller Order Processor & SVG Generator
+Project Purpose
+A PyQt5-based desktop app for managing Amazon (and other channel) memorial stake orders, generating batch or single SVGs for UV printing, and supporting both automatic and manual order entry.
+
+Core Features
+1. Order Table Management
+Import Orders: Drag-and-drop Amazon order .txt files; parses and loads into a table.
+Manual Entry: Users can add blank rows for orders from other channels.
+Delete Rows: Users can delete any selected row, with table re-numbering.
+Edit Orders: All table cells are editable; changes sync with the underlying DataFrame.
+Tickboxes: Each row has a tickbox for selecting orders to process.
+Sequential Numbering: The first column is always a sequential "No." for easy reference.
+2. SVG Generation
+Processor Selection: Automatically chooses the correct SVG processor based on stake type, colour, and decoration.
+Regular, Small, Large, Photo, B&W, and Coloured Stakes all supported.
+Robust Matching: Handles synonyms and variations for types, colours (including "black" and "slate"), and decoration types.
+Filename Logic: Custom SVG filenames include order ID, SKU, type, colour, and graphic.
+Batch and Single SVG: Supports both batch and per-order SVG creation.
+Restore Points: Key milestones are saved for easy rollback.
+3. Table Export and Output
+Export: Table can be exported as CSV or TXT.
+Output Folder: Button to open the SVG output directory.
+SVG/CSV File Links: Generated files are listed with clickable links in the UI.
+Recent Improvements
+Manual Row Add/Delete: Add and delete row buttons with robust DataFrame/table sync; always maintains correct tickboxes and numbering.
+No Duplicates: Prevents duplicate "No." or "Tick" columns.
+Processor Logic: Large stakes now use the correct processor (B&W or Coloured) based on colour; includes debug logging.
+Restore Points: After each major milestone, a restore point is created for safe iteration.
+Key Technical Stack
+Python 3.x
+PyQt5 (GUI)
+pandas (data manipulation)
+svgwrite (SVG generation)
+Custom Processors:
+RegularStakesProcessor
+ColouredSmallStakesTemplateProcessor
+BWLargeStakesProcessor
+ColouredLargeStakesProcessor
+(and others for photo/B&W/photo large stakes)
+Known Good State (Restore Point)
+Add/delete row works as intended, with no empty or duplicate rows.
+Table always maintains correct "No." and "Tick" columns.
+SVG generation logic for all stake types is robust and uses the correct processor.
+All recent user-requested layout, font, and workflow changes are included.
+Next Steps / TODO
+Further test manual entry and deletion for edge cases.
+Add multi-row delete or undo if required.
+Allow default values or templates for manual row entry.
+Additional validation for required fields before SVG generation (optional).
+How to Resume
+Reload this summary to restore context.
+If you need to roll back, reference the latest restore point.
+For any new features or bug fixes, specify your requirements and I will continue from this state.
+If you need a more technical breakdown (e.g., class/function summaries or code snippets), or want this saved as a file, let me know!

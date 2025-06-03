@@ -1,11 +1,15 @@
+# Byte-compiled / cache
 __pycache__/
 *.pyc
+
+# Environment
 .env
-*.env
-*.sqlite3
-*.db
+.venv/
+
+# Output
+SVG_OUTPUT/
 *.log
+
+# OS files
 .DS_Store
-.vscode/
-.idea/
-*.bak
+Thumbs.db

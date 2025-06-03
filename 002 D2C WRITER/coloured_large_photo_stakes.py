@@ -2,6 +2,10 @@ import os
 import svgwrite
 from memorial_base import MemorialBase
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos
+from core.processors.svg_utils import draw_rounded_rect, add_multiline_text
 
 class ColouredLargePhotoStakesProcessor(MemorialBase):
     def process_orders(self, orders):
@@ -117,6 +121,10 @@ class ColouredLargePhotoStakesProcessor(MemorialBase):
         self.x_offset_px = int(self.x_offset_mm * self.px_per_mm)
         self.y_offset_px = int(self.y_offset_mm * self.px_per_mm)
 
+        # Text sizes (pt)
+        self.line1_size_pt = 17
+        self.line2_size_pt = 25
+
     def add_photo_memorial(self, dwg, x, y, order):
         # Add memorial outline with rounded corners
         dwg.add(dwg.rect(
@@ -192,8 +200,9 @@ class ColouredLargePhotoStakesProcessor(MemorialBase):
             stroke_width=self.photo_outline_stroke_px
         ))
         
-        # Add photo border with thick stroke
-        dwg.add(dwg.rect(
+        # Add photo border using shared SVG utility
+        dwg.add(draw_rounded_rect(
+            dwg,
             insert=(frame_x, frame_y),
             size=(self.photo_width_px, self.photo_height_px),
             rx=self.photo_corner_radius_px,
@@ -230,36 +239,39 @@ class ColouredLargePhotoStakesProcessor(MemorialBase):
         
         if not pd.isna(order['line_1']):
             line1_y = y + (28 * self.px_per_mm)
-            dwg.add(dwg.text(
-                str(order['line_1']),
+            dwg.add(add_multiline_text(
+                dwg,
+                [order.get('line_1', '')],
                 insert=(text_center_x, line1_y),
-                font_size=f"{17 * self.pt_to_mm}mm",
+                font_size=f"{self.line1_size_pt}pt",
                 font_family="Georgia",
-                text_anchor="middle",
+                anchor="middle",
                 fill="black"
             ))
         
         if not pd.isna(order['line_2']):
             line2_y = y + (45 * self.px_per_mm)
-            dwg.add(dwg.text(
-                str(order['line_2']),
+            dwg.add(add_multiline_text(
+                dwg,
+                [str(order['line_2'])],
                 insert=(text_center_x, line2_y),
-                font_size=f"{25 * self.pt_to_mm}mm",
+                font_size=f"{self.line2_size_pt}pt",
                 font_family="Georgia",
-                text_anchor="middle",
+                anchor="middle",
                 fill="black"
             ))
         
         if not pd.isna(order['line_3']):
-            lines = self.wrap_text(str(order['line_3']))
+            lines = split_line_to_fit(str(order['line_3']), 30)
             for line_idx, line in enumerate(lines):
                 line3_y = y + ((57 + line_idx * 4) * self.px_per_mm)
-                dwg.add(dwg.text(
-                    line.strip(),
+                dwg.add(add_multiline_text(
+                    dwg,
+                    [line.strip()],
                     insert=(text_center_x, line3_y),
                     font_size=f"{12 * self.pt_to_mm}mm",
                     font_family="Georgia",
-                    text_anchor="middle",
+                    anchor="middle",
                     fill="black"
                 ))
 

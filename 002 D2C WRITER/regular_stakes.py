@@ -2,8 +2,10 @@ import os
 import svgwrite
 from memorial_base import MemorialBase
 import pandas as pd
-import textwrap
-import re
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos
+from core.processors.svg_utils import draw_rounded_rect, add_multiline_text
 from datetime import datetime
 from pathlib import Path
 
@@ -46,42 +48,9 @@ class RegularStakesProcessor(MemorialBase):
         self.stroke_width = 0.1 * self.px_per_mm
         self.corner_radius_px = 6 * self.px_per_mm
 
-    def check_grammar_and_typos(self, order):
-        # a. Spaces before commas or periods
-        for key in ['line_1', 'line_2', 'line_3']:
-            value = order.get(key, "")
-            value = "" if value is None or (isinstance(value, float) and pd.isna(value)) else str(value)
-            if value and re.search(r"\s+[,\.]", value):
-                print(f"Warning: Extra space before comma/period in {key}: '{value}'")
-
-        # b. Future death dates (try to find DD/MM/YYYY or MM/DD/YYYY)
-        date_pattern = r'(\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b)'
-        for key in ['line_1', 'line_2', 'line_3']:
-            value = order.get(key, "")
-            value = "" if value is None or (isinstance(value, float) and pd.isna(value)) else str(value)
-            if value:
-                for match in re.findall(date_pattern, value):
-                    # ...
-                    try:
-                        # Try UK format first (DD/MM/YYYY)
-                        dt = datetime.strptime(match, "%d/%m/%Y")
-                    except ValueError:
-                        try:
-                            # Try US format (MM/DD/YYYY)
-                            dt = datetime.strptime(match, "%m/%d/%Y")
-                        except ValueError:
-                            continue
-                    if dt.year > datetime.now().year:
-                        print(f"Warning: Future year found in {key}: '{match}' in '{order[key]}'")
-
-        # c. Capitalization of names (LINE_1 and LINE_2)
-        for key in ['line_1', 'line_2']:
-            value = order.get(key, "")
-            value = "" if value is None or (isinstance(value, float) and pd.isna(value)) else str(value)
-            if value and not value.istitle():
-                print(f"Warning: Name not title case in {key}: '{value}'")
 
     def process_orders(self, orders):
+        print("[DEBUG] Entered RegularStakesProcessor.process_orders")
         if isinstance(orders, list):
             df = pd.DataFrame(orders)
         else:
@@ -126,14 +95,21 @@ class RegularStakesProcessor(MemorialBase):
                 expanded_rows.append(row.copy())
         df_expanded = pd.DataFrame(expanded_rows)
 
-        allowed_colours = ['copper', 'gold', 'silver', 'marble', 'stone']
+        allowed_types = ['regular stake', 'regular plaque']
+        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
+        special_skus = ['om008021']  # Extendable for future special cases
+        # Ensure all relevant fields are lowercased for comparison
+        df_expanded['type'] = df_expanded['type'].astype(str).str.strip().str.lower()
+        df_expanded['colour'] = df_expanded['colour'].astype(str).str.strip().str.lower()
+        df_expanded['decorationtype'] = df_expanded['decorationtype'].astype(str).str.strip().str.lower()
+        df_expanded['sku'] = df_expanded['sku'].astype(str).str.strip().str.lower()
         filtered = df_expanded[
             (
-                (df_expanded['type'].str.contains('regular stake', na=False)) &
-                (df_expanded['colour'].isin(allowed_colours))
+                df_expanded['type'].isin(allowed_types) &
+                df_expanded['colour'].isin(allowed_colours) &
+                (df_expanded['decorationtype'] == 'graphic')
             ) |
-            (df_expanded['type'].str.contains('regular plaque', na=False)) |
-            (df_expanded['sku'].astype(str).str.upper() == 'OM008021')
+            (df_expanded['sku'].isin(special_skus))
         ].copy()
 
         color_priority = {'copper': 0, 'gold': 1, 'silver': 2, 'stone': 3, 'marble': 4}
@@ -141,7 +117,9 @@ class RegularStakesProcessor(MemorialBase):
         filtered = filtered.sort_values('color_priority')
 
         # --- Exclude photo SKUs based on SKULIST.csv ---
-        skulist_path = r'G:/My Drive/003 APPS/002 AmazonSeller/001 AMAZON DATA DOWNLOAD/SKULIST.csv'
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        skulist_path = os.path.join(project_root, 'assets', 'SKULIST.csv')
+        print(f"[DEBUG] Attempting to read SKULIST.csv from: {skulist_path}")
         skulist_df = pd.read_csv(skulist_path)
         skulist_df.columns = [col.lower().strip() for col in skulist_df.columns]
         if 'decorationtype' in skulist_df.columns:
@@ -155,19 +133,30 @@ class RegularStakesProcessor(MemorialBase):
             print("Warning: 'type' column not found in SKULIST.csv!")
             skulist_df['type'] = ''
         photo_skus = set(skulist_df[(skulist_df['type'].isin(['regular stake', 'regular plaque'])) & (skulist_df['decorationtype'] == 'photo')]['sku'].astype(str).str.strip())
-        before = len(filtered)
-        filtered = filtered[(filtered['type'].str.lower().isin(['regular stake', 'regular plaque'])) & (~filtered['sku'].isin(photo_skus))]
-        print(f"Filtered out {before - len(filtered)} photo stakes from regular stake processing (by photo SKU list).")
+        print("photo_skus being used for exclusion:", photo_skus)
+        print("SKUs in filtered before exclusion:", filtered['sku'].tolist())
+        # TEMPORARILY DISABLE photo SKU exclusion for debugging
+        # No further filtering needed here; all logic is handled above.
+        print(f"[DEBUG] Filtered regular stakes and plaques (with special SKUs): {len(filtered)}")
         print(f"Sample regular stakes: {filtered[['order-id', 'sku', 'colour', 'decorationtype']].head()}")
 
         print(f"\nFiltered columns: {list(filtered.columns)}")
         print(filtered.head())
         print(f"\nFound {len(filtered)} Regular Stakes (copper/gold/silver)")
 
+        # DEBUG: Show filtered orders to be batched
+        print("Filtered orders to be batched:")
+        print(filtered[['order-id', 'sku', 'line_1']])
+
         batch_num = 1
         total = len(filtered)
+        print(f"[DEBUG] self.batch_size: {self.batch_size}")
+        print(f"[DEBUG] total filtered rows: {total}")
+        if not isinstance(self.batch_size, int) or self.batch_size <= 0:
+            print("[WARNING] batch_size is invalid (<=0 or not int)")
         for start_idx in range(0, total, self.batch_size):
             end_idx = min(start_idx + self.batch_size, total)
+            print(f"[DEBUG] Batch indices: start_idx={start_idx}, end_idx={end_idx}")
             batch_orders = filtered.iloc[start_idx:end_idx]
             print(f"\nProcessing Regular Stake batch {batch_num}: rows {start_idx} to {end_idx-1} (batch size: {len(batch_orders)})")
             if not batch_orders.empty:
@@ -177,15 +166,14 @@ class RegularStakesProcessor(MemorialBase):
                 self.create_batch_csv(orders_dict, batch_num, self.CATEGORY)
                 batch_num += 1
 
-    def split_line_to_fit(self, line, max_chars):
-        # Split a single line into lines that fit max_chars
-        return textwrap.wrap(line, width=max_chars)
 
-    def create_memorial_svg(self, orders, batch_num):
+
+    def create_memorial_svg(self, orders, batch_num, output_path=None):
         if orders:
             print(f"Batch {batch_num} first order text fields: line_1={orders[0].get('line_1')}, line_2={orders[0].get('line_2')}, line_3={orders[0].get('line_3')}")
-        filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
-        output_path = os.path.join(self.OUTPUT_DIR, filename)
+        if output_path is None:
+            filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
+            output_path = os.path.join(self.OUTPUT_DIR, filename)
 
         dwg = svgwrite.Drawing(
             filename=output_path,
@@ -212,9 +200,13 @@ class RegularStakesProcessor(MemorialBase):
 
             if idx < len(orders):
                 order = orders[idx]
-                self.check_grammar_and_typos(order)
+                print(f"SVG Batch {batch_num}, Cell {idx}: order-id={order.get('order-id')}, sku={order.get('sku')}, line_1={order.get('line_1')}")
+                # Use shared utility for grammar/typo checks
+                for field in ['line_1', 'line_2', 'line_3']:
+                    check_grammar_and_typos(order.get(field, ''))
 
-                # Special handling for OM008021 graphic
+                # --- SKU-specific logic for OM008021 ---
+                # If the SKU is OM008021, always use the special graphic file from the hardcoded path.
                 if str(order.get('sku', '')).upper() == 'OM008021':
                     graphic_path = r'G:/My Drive/001 NBNE/001 M/M0634 - METALLIC PERSONALISED MEMORIAL - DICK, TOM/001 Design/002 MUTOH/002 AUTODESIGN/OM008021.png'
                     print(f"Using special graphic for OM008021: {graphic_path}")
@@ -230,6 +222,7 @@ class RegularStakesProcessor(MemorialBase):
                             print(f"Failed to embed OM008021 graphic")
                     else:
                         print(f"Warning: OM008021 graphic not found: {graphic_path}")
+                # --- Standard logic for other SKUs ---
                 elif order.get('graphic'):
                     graphic_path = os.path.join(self.graphics_path, str(order['graphic']))
                     print(f"Looking for graphic: {graphic_path}")
@@ -280,11 +273,11 @@ class RegularStakesProcessor(MemorialBase):
                         split_lines = []
                         for l in lines:
                             if l.strip():  # Only process non-empty lines
-                                split_lines.extend(self.split_line_to_fit(l, max_chars))
+                                split_lines.extend(split_line_to_fit(l, max_chars))
                         
                         if split_lines:  # Only continue if we have lines to display
                             if len(split_lines) == 1:
-                                split_lines = textwrap.wrap(split_lines[0], width=30)
+                                split_lines = split_line_to_fit(split_lines[0], 30)
                             split_lines = split_lines[:5]
                             
                             # --- Conditional font size logic for Line 3 ---
@@ -326,6 +319,8 @@ class RegularStakesProcessor(MemorialBase):
         x_pos = self.page_width_px - ref_size_px
         y_pos = self.page_height_px - ref_size_px
 
+        # Example of using shared SVG utility for rounded rect (if desired elsewhere):
+        # dwg.add(draw_rounded_rect(dwg, insert=(x_pos, y_pos), size=(ref_size_px, ref_size_px), rx=0, ry=0, fill='blue', stroke='none', stroke_width=0))
         dwg.add(dwg.rect(
             insert=(x_pos, y_pos),
             size=(ref_size_px, ref_size_px),

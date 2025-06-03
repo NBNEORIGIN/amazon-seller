@@ -44,7 +44,7 @@ This project automates the design, QA, and order management for memorial product
 
 ## Known Issues & Next Steps
 - Some rows in `output.csv` may be skipped if not meeting filter criteria (logging for skipped rows is a TODO).
-- Awaiting Amazon SP-API access for full automation.
+
 - Need to maintain `requirements.txt` and keep the virtual environment in sync.
 - Complete `llama-cpp-python` installation and test AI-powered QA features.
 - Continue development of new stake types and regular environment maintenance.

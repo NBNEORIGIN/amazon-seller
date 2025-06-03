@@ -2,6 +2,10 @@ import os
 import svgwrite
 from memorial_base import MemorialBase
 import pandas as pd
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos
+from core.processors.svg_utils import draw_rounded_rect, add_multiline_text
 
 class BWLargePhotoStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
@@ -51,10 +55,15 @@ class BWLargePhotoStakesProcessor(MemorialBase):
         self.y_offset_mm = self.page_height_mm - grid_height_mm
         self.x_offset_px = int(self.x_offset_mm * self.px_per_mm)
         self.y_offset_px = int(self.y_offset_mm * self.px_per_mm)
+        # Text sizes (pt)
+        self.line1_size_pt = 17
+        self.line2_size_pt = 25
 
     def add_photo_memorial(self, dwg, x, y, order):
         # Add memorial outline with rounded corners
-        dwg.add(dwg.rect(
+        # Use shared SVG utility for memorial outline
+        dwg.add(draw_rounded_rect(
+            dwg,
             insert=(x, y),
             size=(self.memorial_width_px, self.memorial_height_px),
             rx=self.corner_radius_px,
@@ -79,12 +88,16 @@ class BWLargePhotoStakesProcessor(MemorialBase):
         text_center_y = y + (28 * self.px_per_mm)  # Align with line 1
         
         # Add black background rectangle for photo visibility
-        dwg.add(dwg.rect(
+        # Use shared SVG utility for black background rectangle for photo
+        dwg.add(draw_rounded_rect(
+            dwg,
             insert=(clip_x, clip_y),
             size=(self.photo_clip_width_px, self.photo_clip_height_px),
             rx=self.photo_corner_radius_px,
             ry=self.photo_corner_radius_px,
-            fill='black'
+            fill='black',
+            stroke='none',
+            stroke_width=0
         ))
         
         # Add clipping rectangle with same dimensions
@@ -154,82 +167,97 @@ class BWLargePhotoStakesProcessor(MemorialBase):
         text_area_width = self.memorial_width_px - (text_x - x) - self.text_right_shift_px
         text_center_x = text_x + text_area_width / 2
         
+        pt_to_mm = 0.352778
         if not pd.isna(order['line_1']):
             line1_y = y + (28 * self.px_per_mm)
-            dwg.add(dwg.text(
-                str(order['line_1']),
-                insert=(text_center_x, line1_y),
-                font_size=f"{17 * self.pt_to_mm}mm",
-                font_family="Georgia",
-                text_anchor="middle",
-                fill="black"
-            ))
-        
+            lines = split_line_to_fit(str(order['line_1']), 30)
+            for idx, line in enumerate(lines):
+                dy = 0 if idx == 0 else self.line1_size_pt * pt_to_mm * 1.3
+                dwg.add(add_multiline_text(
+                    dwg,
+                    [line],
+                    insert=(text_center_x, line1_y + dy),
+                    font_size=f"{self.line1_size_pt * pt_to_mm}mm",
+                    font_family="Georgia",
+                    anchor="middle",
+                    fill="black"
+                ))
         if not pd.isna(order['line_2']):
             line2_y = y + (45 * self.px_per_mm)
-            dwg.add(dwg.text(
-                str(order['line_2']),
-                insert=(text_center_x, line2_y),
-                font_size=f"{25 * self.pt_to_mm}mm",
-                font_family="Georgia",
-                text_anchor="middle",
-                fill="black"
-            ))
-        
-        if not pd.isna(order['line_3']):
-            lines = self.wrap_text(str(order['line_3']))
-            for line_idx, line in enumerate(lines):
-                line3_y = y + ((57 + line_idx * 4) * self.px_per_mm)
-                dwg.add(dwg.text(
-                    line.strip(),
-                    insert=(text_center_x, line3_y),
-                    font_size=f"{12 * self.pt_to_mm}mm",
+            lines = split_line_to_fit(str(order['line_2']), 30)
+            for idx, line in enumerate(lines):
+                dy = 0 if idx == 0 else self.line2_size_pt * pt_to_mm * 1.3
+                dwg.add(add_multiline_text(
+                    dwg,
+                    [line],
+                    insert=(text_center_x, line2_y + dy),
+                    font_size=f"{self.line2_size_pt * pt_to_mm}mm",
                     font_family="Georgia",
-                    text_anchor="middle",
+                    anchor="middle",
+                    fill="black"
+                ))
+        if not pd.isna(order['line_3']):
+            base_y = y + (57 * self.px_per_mm)
+            lines = split_line_to_fit(str(order['line_3']), 30)
+            for idx, line in enumerate(lines):
+                dy = 0 if idx == 0 else 12 * pt_to_mm * 1.3
+                dwg.add(add_multiline_text(
+                    dwg,
+                    [line],
+                    insert=(text_center_x, base_y + dy),
+                    font_size=f"{12 * pt_to_mm}mm",
+                    font_family="Georgia",
+                    anchor="middle",
                     fill="black"
                 ))
 
     def create_memorial_svg(self, orders, batch_num):
         filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
         filepath = os.path.join(self.OUTPUT_DIR, filename)
-        
         dwg = svgwrite.Drawing(
             filepath,
             size=(f"{self.page_width_mm}mm", f"{self.page_height_mm}mm"),
             viewBox=f"0 0 {self.page_width_px} {self.page_height_px}"
         )
-        
         # Process 2 memorials in 1x2 grid
         for idx, order in enumerate(orders):
             if idx >= 2:
                 break
-                
             row = idx // self.grid_cols
             col = idx % self.grid_cols
-            x = self.x_offset_px + (col * self.memorial_width_px)
-            y = self.y_offset_px + (row * self.memorial_height_px)
-            
+            x = self.x_offset_px + col * self.memorial_width_px
+            y = self.y_offset_px + row * self.memorial_height_px
             self.add_photo_memorial(dwg, x, y, order)
-        
         # Add reference point
         self.add_reference_point(dwg)
         dwg.save()
         return dwg
 
     def process_orders(self, df):
+        # Normalize column names to lowercase
+        df.columns = [col.lower() for col in df.columns]
+        # Ensure 'photo_path' column exists and is filled from 'image_path' if missing
+        if 'photo_path' not in df.columns:
+            if 'image_path' in df.columns:
+                df['photo_path'] = df['image_path']
+            else:
+                df['photo_path'] = pd.NA
+        else:
+            # If photo_path exists but is empty, and image_path exists, fill missing photo_path with image_path
+            if 'image_path' in df.columns:
+                df['photo_path'] = df['photo_path'].combine_first(df['image_path'])
         # Filter for B&W large photo stakes
         large_photo_stakes = df[
-            (df['COLOUR'].str.lower() == 'black') & 
-            (df['TYPE'].str.contains('Large Stake', case=False, na=False)) &
+            (df['colour'].str.lower() == 'black') & 
+            (df['type'].str.contains('large stake', case=False, na=False)) &
+            (df['decorationtype'].str.lower() == 'photo') &
             (df['photo_path'].notna())
         ].copy()
-        
         # Process in batches of 2
         batch_num = 1
         for start_idx in range(0, len(large_photo_stakes), 2):
             batch_orders = large_photo_stakes.iloc[start_idx:start_idx + 2]
             if not batch_orders.empty:
-
                 self.create_memorial_svg(batch_orders.to_dict('records'), batch_num)
                 self.create_batch_csv(batch_orders.to_dict('records'), batch_num, self.CATEGORY)
                 batch_num += 1

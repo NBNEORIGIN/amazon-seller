@@ -21,21 +21,21 @@ class BWStakesProcessor(MemorialBase):
         else:
             df['decorationtype'] = df['decorationtype'].astype(str).str.strip().str.lower()
 
-        allowed_colours = ['black', 'slate']
+        allowed_colours = ['black']
         eligible = df[
             (df['type'] == 'regular stake') &
             (df['colour'].isin(allowed_colours)) &
             (df['decorationtype'] == 'graphic')
         ].copy()
-
+        print(f"[BW DEBUG] Eligible before expansion: {len(eligible)}")
 
         if eligible.empty:
-    
+            print("[BW DEBUG] No eligible B&W stakes before expansion.")
             return
 
         # Expand rows by number-of-items
         expanded_rows = []
-        for _, row in df.iterrows():
+        for _, row in eligible.iterrows():
             try:
                 qty = int(row.get('number-of-items', 1))
                 qty = max(qty, 1)
@@ -44,13 +44,13 @@ class BWStakesProcessor(MemorialBase):
             for _ in range(qty):
                 expanded_rows.append(row.copy())
         df_expanded = pd.DataFrame(expanded_rows)
-        
+
         bw_stakes = df_expanded[
-            (df_expanded['type'].str.contains('regular stake', case=False, na=False)) & 
-            (df_expanded['colour'].isin(['black', 'slate'])) &
+            (df_expanded['type'] == 'regular stake') &
+            (df_expanded['colour'].isin(allowed_colours)) &
+            (df_expanded['decorationtype'] == 'graphic') &
             (df_expanded['graphic'].notna())
         ].copy()
-        
         print(f"\nFound {len(bw_stakes)} B&W Stakes")
         
         # Process in batches of 3
