@@ -1,204 +1,87 @@
-# Project Structure & File Purpose Summary
+# Project Structure Summary
 
-_Last updated: 2025-05-05 08:02 BST_
+This document outlines the directory structure and key files of the Amazon Seller Order Processor project.
 
-This document provides an overview of the purpose of each major file and folder in the project directory. It is intended as a reference and backup for onboarding, troubleshooting, and general understanding of the codebase.
+## Main Directories and Their Roles
 
----
+*   **`/` (Root Directory):**
+    *   Contains the main application script (`main_gui_qt_clean.py`), startup scripts (`run_gui.bat`), dependency management (`requirements.txt`, `install_requirements.py`), and various configuration/utility files. Also, houses top-level project documentation like this summary.
 
-## Top-Level Project Directory
+*   **`000 ARCHIVE/`:**
+    *   Appears to hold older versions of the codebase, experimental features (like `SPAPI_Python_SDK`), previous configurations, and recovery points. This directory is likely for historical reference and not part of the active application.
 
-- **.env**  
-  Environment variables for API keys or configuration (may be used by scripts or for local settings).
+*   **`001 AMAZON DATA DOWNLOAD/`:**
+    *   This directory is crucial for the initial order processing steps.
+    *   Contains scripts for fetching, parsing, and processing Amazon order report files (often `.txt` files containing links to ZIPs with XML/image data).
+    *   Key scripts like `app.py` (likely a standalone script for this part) and `order_pipeline.py` (used by the main GUI) orchestrate the download, extraction of order details (SKU, customization, image paths), and initial data structuring.
+    *   Also holds sample order files (`.txt`) and test CSVs.
 
-- **.git, .gitignore**  
-  Git version control folder and ignore rules.
+*   **`002 D2C WRITER/` (Direct-to-Customer Writer):**
+    *   This directory is central to the SVG generation process.
+    *   It contains various Python scripts, each responsible for generating SVGs for specific types of memorial stakes (e.g., `regular_stakes.py`, `photo_stakes.py`, `bw_large_stakes.py`, `coloured_small_stakes_template_processor.py`). These are referred to as "processors."
+    *   `main.py` in this directory seems to be a script for batch processing orders using these SVG generators, possibly for testing or an older workflow.
+    *   The main GUI application directly imports and uses these processor classes.
 
-- **.venv**  
-  Python virtual environment for dependencies (local to this project).
+*   **`003 SALES/`:**
+    *   Contains sales-related data, such as sample sales reports (`.txt`, `.csv`) and potentially scripts or outputs related to sales analysis (e.g., `output_heatmap.csv`). Its direct integration with the main order processing GUI is not immediately apparent but might be a separate utility.
 
-- **000 ARCHIVE/**  
-  Archive of old or backup files (not directly used in current processing).
+*   **`assets/`:**
+    *   Stores essential data and resources required by the application.
+    *   `assets/SKULIST.csv`: A critical file that maps Amazon SKUs to product types, colors, themes, and other attributes used in order processing and SVG generation.
+    *   `assets/graphics/`: Contains various graphic files (PNG, SVG) used as design elements in the SVG generation process (e.g., celtic patterns, floral designs, specific product graphics).
+    *   `assets/002_svg_templates/`: Holds base SVG template files (e.g., `small_colour.svg`) that are populated with order-specific data by some of the SVG processors.
 
-- **001 AMAZON DATA DOWNLOAD/**  
-  All scripts and data for downloading, parsing, and processing Amazon order data (see below for details).
+*   **`core/`:**
+    *   This directory seems to represent an effort to structure the application's logic more formally.
+    *   `core/order_manager.py`: Aims to handle order data loading, validation, and manipulation independently of the GUI.
+    *   `core/svg_generator.py`: Intended to be a centralized module for SVG creation, delegating to different stake processors.
+    *   `core/processors/`: Likely planned to contain the individual SVG processor modules (though many are still in `002 D2C WRITER/`).
+    *   While present, the main GUI (`main_gui_qt_clean.py`) still directly uses many components from `002 D2C WRITER/` and `001 AMAZON DATA DOWNLOAD/`.
 
-- **002 D2C WRITER/**  
-  All scripts for generating SVGs, batch CSVs, and handling product/stake design logic (see below for details).
+*   **`images/`:**
+    *   The default output directory where images downloaded from Amazon orders (e.g., customer photos for photo stakes) are stored.
 
-- **003 SALES/**  
-  Contains sales data files, heatmap outputs, and analysis scripts or results.
+*   **`SVG_OUTPUT/`:** (Not listed in `ls()` root, but created by the application)
+    *   This is the default output directory where the generated SVG files are saved by the application.
 
-- **004 IMAGES/**  
-  Contains all product/customer images referenced by orders and used in SVG generation.
+*   **`llm_integration/`:**
+    *   Contains scripts and files related to integrating Large Language Models (LLMs), possibly for tasks like text processing, summarization, or other AI-driven features. This includes scripts for downloading models from Hugging Face (`download_from_hf.py`, `download_llama.py`), model conversion (`convert_to_gguf.py`), and interfacing with LLMs (`llm_interface.py`). This functionality might be experimental or a newer addition.
 
-- **005 Assets/**  
-  Contains graphics assets (e.g., icons, backgrounds) and the `SKULIST.csv` file, which maps SKUs to product metadata.
+*   **`BACKUP SCRIPTS/`:**
+    *   Contains backup versions of key scripts, like `main_gui_qt_clean backup 040525 1520.txt`.
 
-- **BACKUP SCRIPTS/**  
-  Folder for backup versions of main scripts (e.g., backup of main_gui_qt_clean).
+## Key Files and Their Responsibilities
 
-- **PROJECT_SUMMARY.md**  
-  Project overview, features, structure, and known issues—serves as a quick reference.
+*   **`main_gui_qt_clean.py`:**
+    *   The main executable Python script for the application.
+    *   Launches the PyQt5-based graphical user interface.
+    *   Integrates functionalities for order processing (by calling `order_pipeline.py`) and SVG generation (by instantiating and using processor classes from `002 D2C WRITER/`).
+    *   Handles user interactions, table display, file operations, and SVG preview.
 
-- **PrivateApp_API/**  
-  (Purpose not clear from name—likely for private API integration or credentials.)
+*   **`run_gui.bat`:**
+    *   A batch script for easily running the main GUI application (`main_gui_qt_clean.py`) on Windows.
 
-- **RECOVERY_POINT_*.md**  
-  Recovery checkpoint files for restoring project state.
+*   **`001 AMAZON DATA DOWNLOAD/order_pipeline.py`:**
+    *   A core script responsible for the Amazon order processing workflow.
+    *   Takes order file paths, orchestrates the downloading of ZIP files, parsing of XML data, extraction of image URLs, and consolidates order information using `SKULIST.csv`.
+    *   Called by `main_gui_qt_clean.py` to process dropped/selected order files.
 
-- **SVG_OUTPUT/**  
-  Output folder for generated SVG and CSV files for processed orders.
+*   **`001 AMAZON DATA DOWNLOAD/app.py`:**
+    *   Appears to be a standalone script or an earlier version for processing Amazon data downloads, similar in function to `order_pipeline.py` but potentially run independently.
 
-- **create_recovery_point.bat / .py**  
-  Scripts to create project recovery checkpoints.
+*   **SVG Processor Scripts (in `002 D2C WRITER/`):**
+    *   Examples: `regular_stakes.py`, `photo_stakes.py`, `bw_large_stakes.py`, `coloured_small_stakes_template_processor.py`, etc.
+    *   Each script defines a class (processor) that takes order data (usually a pandas DataFrame row or subset) and generates an SVG file tailored to that specific product type and its customizations.
 
-- **llm_integration/**  
-  Scripts and tools for integrating and managing local AI models (Llama, etc.). See below for details.
+*   **`assets/SKULIST.csv`:**
+    *   A crucial CSV file acting as a database that maps product SKUs to their characteristics (type, color, theme, etc.). This information is vital for both displaying order details correctly and for selecting the appropriate SVG generation logic.
 
-- **main_gui.py, main_gui_qt.py, main_gui_qt_clean.py**  
-  Main GUI application scripts.  
-  - `main_gui_qt_clean.py` is the primary, most up-to-date GUI for order processing and SVG generation.
-  - Others are older or alternative versions.
+*   **`requirements.txt`:**
+    *   Lists the Python dependencies required to run the project (e.g., PyQt5, pandas, requests).
 
-- **main_gui_qt_clean_backup_20250504.py**  
-  Backup of the main GUI script.
+*   **`install_requirements.py`:**
+    *   A utility script to automatically check for and install missing dependencies listed in `requirements.txt`.
 
-- **pyqt_test_qpushbutton.py**  
-  Minimal test script for PyQt button functionality.
-
-- **requirements.txt**  
-  List of required Python packages for the project.
-
-- **run_gui.bat, run_gui_with_update.bat**  
-  Batch files to launch the GUI (with or without update steps).
-
----
-
-## 001 AMAZON DATA DOWNLOAD/
-
-- **app.py**  
-  Main script for downloading and parsing Amazon order reports.
-
-- **order_pipeline.py**  
-  Orchestrates the order processing pipeline, including calling download, parsing, and output functions.
-
-- **order_parser.py**  
-  Parses individual Amazon order files into structured data.
-
-- **api_client.py, auth_direct.py, get_auth_token.py, self_auth.py, self_authorize.py, test_api.py**  
-  Scripts for authentication and API interaction (some may be legacy or for future Amazon API integration).
-
-- **output.csv, output.txt**  
-  Processed order data output files.
-
-- **run_amazon_xml_processing.bat**  
-  Batch file to run the Amazon XML processing pipeline.
-
-- **004 IMAGES/**, **SVG_OUTPUT/**, **__pycache__/**  
-  Output and cache folders for images, SVGs, and compiled Python files.
-
----
-
-## 002 D2C WRITER/
-
-- **regular_stakes.py, bw_stakes.py, photo_stakes.py, bw_large_stakes.py, bw_large_photo_stakes.py, coloured_large_stakes.py, coloured_large_photo_stakes.py, bw_photo_stakes.py**  
-  Scripts for generating SVGs and batch CSVs for each product/stake type (regular, B&W, photo, large, coloured, etc.).
-
-- **memorial_base.py**  
-  Shared base logic for stake/memorial processing (e.g., QA, warnings, text formatting).
-
-- **design_writer.py**  
-  Likely handles the writing of design files or templates.
-
-- **main.py**  
-  Entry point for running stake processing from the command line.
-
-- **run_memorial_processor.bat**  
-  Batch file to run the memorial processor.
-
-- **bw_photo_stakes BACKUP.py**  
-  Backup of the B&W photo stakes script.
-
-- **__pycache__/**  
-  Python bytecode cache.
-
----
-
-## 003 SALES/
-
-- **AMAZON UK HEATMAP EXAMPLE.csv, ASSEMBLY.csv, SAMPLE SALES DATA.txt, output_heatmap.csv, output_heatmap_heatmap.png**  
-  Sales data and analysis outputs (e.g., heatmaps, assembly data, sales samples).
-
-- **Other .txt files**  
-  Likely raw or processed sales/order data.
-
----
-
-## 004 IMAGES/
-
-- **(JPG files)**  
-  All order- or product-related images referenced by the pipeline for SVG generation.
-
----
-
-## 005 Assets/
-
-- **001 Graphics/**  
-  Graphics assets (icons, backgrounds, etc.) used in SVGs.
-
-- **SKULIST.csv**  
-  Master list mapping SKUs to product metadata (stake type, color, decoration, etc.).
-
----
-
-## BACKUP SCRIPTS/
-
-- **main_gui_qt_clean backup 040525 1520.txt**  
-  Backup of the main GUI script as of a specific date.
-
----
-
-## llm_integration/
-
-- **configure_hf.py, configure_hf_direct.py, configure_token.py**  
-  Scripts for configuring HuggingFace API/token for model downloads.
-
-- **convert_model.py, convert_to_gguf.py**  
-  Scripts for converting models to required formats.
-
-- **download_from_hf.py, download_llama.py, download_llama_direct.py**  
-  Scripts to download Llama or other models.
-
-- **install_git_lfs.ps1**  
-  PowerShell script to install Git LFS (Large File Storage).
-
-- **llm_interface.py**  
-  Main interface for interacting with local AI models.
-
-- **models/**  
-  Folder for storing downloaded or converted models.
-
-- **requirements.txt**  
-  Requirements for LLM integration.
-
-- **setup_llama.py**  
-  Script to set up the Llama model environment.
-
----
-
-## SVG_OUTPUT/
-
-- **(SVG and CSV files)**  
-  Output files for each processed batch of orders and product type.
-
----
-
-## Other Files
-
-- **PrivateApp_API/**  
-  (Unclear—likely for private API integration, credentials, or legacy code.)
-
----
-
-If you want a more detailed summary or have questions about specific files, see the main `PROJECT_SUMMARY.md` or ask your AI assistant.
+*   **`last_state.pkl`:**
+    *   A pickle file used by `main_gui_qt_clean.py` to save and load the last DataFrame state, allowing some persistence between sessions.
+```

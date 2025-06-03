@@ -1,62 +1,47 @@
-# Project Summary: Automated Memorial Product Design & Order Management
+# Project Summary: Amazon Seller Order Processor & SVG Generator
 
-**Date:** 2025-05-02
+## Project Purpose
 
-## Overview
-This project automates the design, QA, and order management for memorial products sold across Amazon, Etsy, and eBay. It includes SVG generation, batch processing, and is being enhanced with AI (Llama 3.2-1B) for design and order QA.
+This project is designed as an **Amazon Seller Order Processor**. Its primary purpose is to automate the workflow for processing personalized product orders from Amazon. It involves parsing Amazon order files, extracting customization details (text, graphics, images), and preparing them for manufacturing by generating Scalable Vector Graphics (SVG) files for various product types, primarily memorial stakes.
 
----
+## Core Functionality
 
-## Key Features & Progress
+The application integrates several core functionalities:
 
-### 1. Order Data Extraction & QA
-- `app.py` processes Amazon order reports, extracting all required metadata and memorial text.
-- Output files (`output.csv`, `output.txt`) now include a `Warnings` column that flags typos, grammar issues, future dates, and formatting problems in memorial text.
-- All output rows correspond to a single memorial, correctly duplicated by the `number-of-items` field.
+1.  **Order Processing:**
+    *   Ingests Amazon order files (typically `.txt` files which may contain links to ZIP archives with XML and image data).
+    *   Parses these files to extract order details such as Order ID, SKU, quantity, customer-provided text lines, and graphic/image choices.
+    *   Utilizes a `SKULIST.csv` file to map SKUs to specific product attributes like type (e.g., "Regular Stake", "Large Photo Stake"), color, and theme.
+    *   Downloads and processes associated images for photo-based products.
+    *   Includes data validation and warning generation for potential issues in order data (e.g., formatting, future dates).
 
-### 2. Stake/Product Processing
-- `regular_stakes.py` and `bw_stakes.py` generate SVGs and batch CSVs for regular and black/white stakes.
-- Batch CSVs now include:
-  - `SVG FILE` (the exact SVG filename for each batch)
-  - `DESIGN FILE`
-  - All relevant memorial/order details
-  - `WARNINGS` column for QA, using a shared warning generator in `memorial_base.py`
-- Color support includes copper, gold, silver, marble, and stone.
-- Logic is robust to missing or malformed fields.
+2.  **SVG Generation:**
+    *   Generates SVG files based on the processed order data, tailored for manufacturing.
+    *   Supports a variety of product types and styles, including:
+        *   Regular stakes
+        *   Photo stakes
+        *   Black & White (B&W) stakes
+        *   Coloured stakes
+        *   Small and Large variants of the above.
+    *   Different Python classes (processors) handle the specific SVG generation logic for each product type, incorporating text, graphics, and images into predefined templates or structures.
 
-### 3. AI Integration (In Progress)
-- Llama 3.2-1B model integration for:
-  - Design file QA
-  - Inventory analysis
-  - Order validation
-- Local model deployment for data security
-- Build environment (Python 3.11+, Visual Studio Build Tools, Git) is set up
-- `llama-cpp-python` installation pending
+3.  **Graphical User Interface (GUI):**
+    *   Provides a user-friendly interface built with PyQt5.
+    *   Allows users to drag and drop Amazon order files for processing.
+    *   Displays processed order data in an editable table format.
+    *   Enables users to trigger SVG generation for individual orders or in batch.
+    *   Features an SVG thumbnail preview pane for generated designs.
+    *   Offers functionality to export order data to CSV or TXT files.
+    *   Includes basic table manipulation features like adding or deleting rows.
 
-### 4. Project Structure
-- `001 AMAZON DATA DOWNLOAD/`: Data extraction and QA
-- `002 D2C WRITER/`: Stake and product processing (SVG/CSV)
-- `llm_integration/`: AI model integration
-- `SVG_OUTPUT/`: Generated design files
-- `main_gui.py`: Main application interface
+## Key Technologies Used
 
----
-
-## Known Issues & Next Steps
-- Some rows in `output.csv` may be skipped if not meeting filter criteria (logging for skipped rows is a TODO).
-
-- Need to maintain `requirements.txt` and keep the virtual environment in sync.
-- Complete `llama-cpp-python` installation and test AI-powered QA features.
-- Continue development of new stake types and regular environment maintenance.
-
----
-
-## Environment Setup
-- Python 3.11+
-- Visual Studio Build Tools
-- Git
-- Model Path: `C:/Users/zentu/.llama/checkpoints/Llama3.2-1B/`
-
----
-
-**This summary is a checkpoint for quick project resumption after a restart.**
+*   **Programming Language:** Python
+*   **GUI Framework:** PyQt5
+*   **Data Handling & Manipulation:** pandas (for managing order data in DataFrames)
+*   **SVG Generation:** Likely `svgwrite` (listed as a dependency and common for Python SVG creation) and custom SVG templating/generation logic within processor classes.
+*   **Web Requests:** `requests` (for downloading order-related files like ZIP archives from URLs).
+*   **XML Parsing:** `xml.etree.ElementTree` (for extracting data from XML files within order downloads).
+*   **File Handling:** Standard Python libraries for file I/O, ZIP file extraction.
+*   **Clipboard:** `pyperclip` (for copying table data).
+*   **Other Dependencies:** NumPy, Matplotlib, Seaborn (their specific use in the primary workflow is less prominent but they are listed as dependencies, potentially for auxiliary tasks like sales analysis).
