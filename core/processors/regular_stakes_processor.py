@@ -61,95 +61,182 @@ class RegularStakesProcessor(ProcessorBase):
 
 
     def is_applicable(self, order_data: pd.Series) -> bool:
-        """
-        Checks if this processor is applicable for the given order.
-        Applicable if type is 'regular stake', decorationtype is 'graphic',
-        and colour is not 'black'.
-        """
-        order_type = str(order_data.get('type', '')).strip().lower()
-        decoration_type = str(order_data.get('decorationtype', '')).strip().lower()
-        colour = str(order_data.get('colour', '')).strip().lower()
+        order_data_lower = order_data.rename(index=str.lower) # Ensure case-insensitivity for column names
 
-        return (order_type == 'regular stake' and
-                decoration_type == 'graphic' and
-                colour != 'black')
+        type_ = str(order_data_lower.get('type', '')).strip().lower()
+        colour = str(order_data_lower.get('colour', '')).strip().lower()
+        decorationtype = str(order_data_lower.get('decorationtype', '')).strip().lower()
+        sku = str(order_data_lower.get('sku', '')).strip().lower() # Get SKU for special cases
 
-    def process(self, order_data: pd.DataFrame, output_dir: str, graphics_path: str) -> None:
-        """
-        Processes the given order data and generates SVG file(s).
-        The input order_data is already filtered by is_applicable.
-        """
-        print("[DEBUG] Entered RegularStakesProcessor.process")
+        allowed_types = ['regular stake', 'regular plaque']
+        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
 
-        # Update instance paths if they differ (though typically set in __init__)
+        # Special SKU OM008021 is mentioned in the original script's create_memorial_svg.
+        # This SKU seems to bypass some standard rules and use a specific graphic.
+        # If it's OM008021, we can consider it applicable for this processor
+        # as the original script had specific handling for it within this processor's drawing logic.
+        if sku == 'om008021':
+            return True
+
+        # Standard applicability check
+        type_is_valid = type_ in allowed_types
+        colour_is_valid = colour in allowed_colours
+        decoration_is_valid = decorationtype != 'photo' # Any decoration type other than 'photo'
+
+        return type_is_valid and colour_is_valid and decoration_is_valid
+
+    def process(self, order_data: pd.DataFrame, output_dir: str, graphics_path: str):
         self.output_dir = output_dir
-        self.graphics_path = graphics_path
+        self.graphics_path = graphics_path # Ensure instance variables are current
         os.makedirs(self.output_dir, exist_ok=True)
 
+        # order_data is already pre-filtered by is_applicable by the main GUI loop
+        # However, the original script had further processing and filtering (qty expansion, specific SKU lists)
+
         if order_data.empty:
-            print("No orders to process for RegularStakesProcessor.")
+            print(f"[{self.CATEGORY}] No orders passed initial is_applicable check.")
             return
 
-        # Columns are already lowercased by the main application or should be
-        # df = order_data.copy() # order_data is already a DataFrame
+        # Make a copy to avoid SettingWithCopyWarning
+        df = order_data.copy()
 
-        # Expand rows by number-of-items - this logic should apply per order
-        # For now, assuming process is called for a batch that is already expanded or handled one-by-one.
-        # If process is called for individual items, expansion might not be needed here.
-        # The current design implies process gets a DataFrame of applicable orders.
-        # If an order has qty > 1, it should appear multiple times in order_data or be handled by caller.
-        # For simplicity, let's assume each row in order_data is one item to generate.
+        # Normalize column names (already done in is_applicable for its checks, but good practice here too for safety)
+        df.columns = [col.lower().strip() for col in df.columns]
 
-        # The original code had complex filtering and sorting.
-        # The new model is that `order_data` passed to `process` is *already* filtered.
-        # Sorting for batching might still be relevant if generating multi-item SVGs.
+        # 1. Expand rows by 'number-of-items'
+        expanded_rows = []
+        for _, row in df.iterrows():
+            try:
+                # Ensure 'number-of-items' exists and is a valid integer
+                qty = int(row.get('number-of-items', 1))
+                qty = max(qty, 1) # Ensure quantity is at least 1
+            except (ValueError, TypeError):
+                qty = 1
+            for _ in range(qty):
+                expanded_rows.append(row.copy())
 
-        # The original `process_orders` batched items into 9-per-page SVGs.
-        # This `process` method should adapt that.
+        if not expanded_rows:
+            print(f"[{self.CATEGORY}] No orders after expansion (or empty initial list).")
+            return
+        df_expanded = pd.DataFrame(expanded_rows)
 
-        df_to_process = order_data.copy()
+        # Re-apply is_applicable filters here to the expanded list, or ensure initial data is clean.
+        # The is_applicable in the GUI filters the original list.
+        # Here, we are processing the already filtered (and now expanded) list.
+        # The original script re-filtered after expansion. Let's stick to that for now.
+        # This means is_applicable's conditions are checked again on potentially duplicated rows.
 
-        # Sorting by color_priority was part of batching in original code
-        allowed_colours_map = {'copper': 0, 'gold': 1, 'silver': 2, 'stone': 3, 'marble': 4} # Others get NaN
-        df_to_process['color_priority'] = df_to_process['colour'].map(allowed_colours_map)
-        df_to_process = df_to_process.sort_values('color_priority').reset_index(drop=True)
+        # The original script's filtering logic was:
+        # allowed_types = ['regular stake', 'regular plaque']
+        # allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
+        # special_skus = ['om008021'] # This is now part of is_applicable
+
+        # df_expanded['type'] = df_expanded['type'].astype(str).str.strip().str.lower()
+        # df_expanded['colour'] = df_expanded['colour'].astype(str).str.strip().str.lower()
+        # df_expanded['decorationtype'] = df_expanded['decorationtype'].astype(str).str.strip().str.lower()
+        # df_expanded['sku'] = df_expanded['sku'].astype(str).str.strip().str.lower()
+
+        # The is_applicable method will be used by the main loop, so df_expanded should already conform
+        # to the general rules. The main additional filtering here is the photo SKU exclusion.
+
+        # 2. Exclude photo SKUs based on SKULIST.csv
+        # This logic is critical and was in the original script.
+        try:
+            # Determine project root to find assets/SKULIST.csv
+            # Assumes this processor file is in core/processors/
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            skulist_path = os.path.join(project_root, 'assets', 'SKULIST.csv')
+
+            if not os.path.exists(skulist_path):
+                print(f"Warning: SKULIST.csv not found at {skulist_path}. Cannot perform photo SKU exclusion.")
+                skulist_df = pd.DataFrame(columns=['sku', 'type', 'decorationtype']) # Empty DataFrame
+            else:
+                skulist_df = pd.read_csv(skulist_path)
+
+            skulist_df.columns = [col.lower().strip() for col in skulist_df.columns]
+
+            # Ensure necessary columns exist in skulist_df
+            if 'sku' not in skulist_df.columns: skulist_df['sku'] = pd.NA
+            if 'type' not in skulist_df.columns: skulist_df['type'] = ''
+            if 'decorationtype' not in skulist_df.columns: skulist_df['decorationtype'] = ''
+
+            skulist_df['sku'] = skulist_df['sku'].astype(str).str.strip().str.lower()
+            skulist_df['type'] = skulist_df['type'].astype(str).str.strip().str.lower()
+            skulist_df['decorationtype'] = skulist_df['decorationtype'].astype(str).str.strip().str.lower()
+
+            # Identify SKUs that are 'regular stake' or 'regular plaque' but are 'photo' decoration type
+            photo_skus_to_exclude = set(
+                skulist_df[
+                    (skulist_df['type'].isin(['regular stake', 'regular plaque'])) &
+                    (skulist_df['decorationtype'] == 'photo')
+                ]['sku']
+            )
+
+            if photo_skus_to_exclude:
+                print(f"[{self.CATEGORY}] Photo SKUs identified for exclusion: {photo_skus_to_exclude}")
+                # Ensure 'sku' column exists in df_expanded before attempting to filter
+                if 'sku' in df_expanded.columns:
+                    df_expanded['sku_lower'] = df_expanded['sku'].astype(str).str.strip().str.lower()
+                    # Exclude these photo SKUs, unless it's the special 'om008021' (which is handled by is_applicable)
+                    initial_count = len(df_expanded)
+                    df_expanded = df_expanded[
+                        (~df_expanded['sku_lower'].isin(photo_skus_to_exclude)) | (df_expanded['sku_lower'] == 'om008021')
+                    ]
+                    print(f"[{self.CATEGORY}] {initial_count - len(df_expanded)} orders excluded due to photo SKU list (retaining om008021 if present).")
+                else:
+                    print(f"[{self.CATEGORY}] Warning: 'sku' column not found in order data. Cannot perform photo SKU exclusion.")
+
+        except Exception as e:
+            print(f"[{self.CATEGORY}] Error during SKULIST.csv processing for photo SKU exclusion: {e}")
+            # Continue without this specific exclusion if SKULIST processing fails
+
+        final_filtered_df = df_expanded
+
+        if final_filtered_df.empty:
+            print(f"[{self.CATEGORY}] No orders remaining after all processing and filtering steps.")
+            return
+
+        # 3. Sort by color_priority
+        color_priority = {'copper': 0, 'gold': 1, 'silver': 2, 'stone': 3, 'marble': 4}
+        # Ensure 'colour' column exists before mapping
+        if 'colour' in final_filtered_df.columns:
+            final_filtered_df['color_priority'] = final_filtered_df['colour'].map(color_priority)
+            # Sort, placing NaNs (if any from map) last or first, then drop helper column
+            final_filtered_df = final_filtered_df.sort_values('color_priority', na_position='last').drop(columns=['color_priority'])
+        else:
+            print(f"[{self.CATEGORY}] Warning: 'colour' column not found for sorting.")
 
 
+        # Batching logic (from original refactoring, should be okay)
+        items_per_page = self.grid_cols * self.grid_rows
         batch_num = 1
-        total_items = len(df_to_process)
+        total_items = len(final_filtered_df)
 
-        if total_items == 0:
-            print("No applicable Regular Stakes orders after internal filtering/preparation.")
-            return
+        print(f"[{self.CATEGORY}] Processing {total_items} items in batches of {items_per_page}.")
 
-        for start_idx in range(0, total_items, self.batch_size):
-            end_idx = min(start_idx + self.batch_size, total_items)
-            current_batch_df = df_to_process.iloc[start_idx:end_idx]
+        for i in range(0, total_items, items_per_page):
+            batch_df = final_filtered_df.iloc[i:i + items_per_page]
+            if not batch_df.empty:
+                # The _create_memorial_page_svg expects a list of dicts
+                orders_dict_list = batch_df.to_dict('records')
 
-            if not current_batch_df.empty:
-                orders_for_svg = current_batch_df.to_dict('records')
-
-                # Define a unique filename for the batch SVG
-                # Example: regular_stakes_20231027_153000_batch_001.svg
-                # If processing single items, filename should be per-item.
-                # The current structure implies batching into pages.
-
-                # For single file processing (if batch_size is 1 or called per item)
-                if len(orders_for_svg) == 1:
-                    order = orders_for_svg[0]
+                # Filename generation logic from previous version of process method
+                if len(orders_dict_list) == 1:
+                    order = orders_dict_list[0]
                     order_id = str(order.get('order-id', 'NO_ID')).strip()
                     sku = str(order.get('sku', 'NO_SKU')).strip()
                     graphic_val = str(order.get('graphic', 'NO_GRAPHIC')).strip().replace('.png', '')
                     filename = f"REGULAR_{order_id}_{sku}_{graphic_val}.svg"
-                    # Create a "page" SVG with just one item
-                    self._create_memorial_page_svg(orders_for_svg, batch_num, filename)
-                else: # Batch processing into a page
+                    self._create_memorial_page_svg(orders_dict_list, batch_num, filename)
+                else:
                     page_filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}.svg"
-                    self._create_memorial_page_svg(orders_for_svg, batch_num, page_filename)
+                    self._create_memorial_page_svg(orders_dict_list, batch_num, page_filename)
 
-                create_batch_csv(orders_for_svg, batch_num, self.CATEGORY, self.output_dir, self.date_str)
-                print(f"Processed batch {batch_num} for Regular Stakes.")
+                # Use the centralized CSV creation utility (already imported at top of file)
+                create_batch_csv(orders_dict_list, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
+
+        print(f"[{self.CATEGORY}] processing complete. {total_items} items processed into {batch_num - 1} SVG/CSV file(s).")
 
     def _create_memorial_page_svg(self, orders_in_batch: list, batch_number: int, filename: str):
         """
