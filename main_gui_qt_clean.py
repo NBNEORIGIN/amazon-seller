@@ -928,146 +928,18 @@ class MainWindow(QMainWindow):
         def get_svg_processor(row):
             # Ensure processors are loaded
             if not hasattr(self, 'processors') or not self.processors:
-                # This is a fallback, ideally processors are loaded at init
                 discover_processors()
                 self.processors = get_all_processors()
                 if not self.processors:
                     return "Error: No processors loaded"
 
-            applicable_processor_name = "No matching processor"
-            for processor_name, processor_class_ref in self.processors.items():
-                # We need an instance to call is_applicable.
-                # This means instantiating each processor for each row, which might be inefficient.
-                # Consider optimizing if performance becomes an issue (e.g., by passing class and data to a static check method).
-                # For now, let's proceed with instantiation.
-                # We need dummy paths for instantiation if the processor expects them.
-                # A better approach for `is_applicable` would be to make it a static method or class method
-                # that doesn't require full instantiation if graphics_path/output_dir aren't needed for the check.
-                # Assuming processors can be instantiated without paths for `is_applicable` or handle None.
-                try:
-                    # Try instantiating with None for paths if constructor allows,
-                    # otherwise, this needs a more robust way to check applicability.
-                    # For now, this assumes is_applicable can be called on an instance
-                    # created without full paths, or that the base class handles this.
-                    # This part is tricky without knowing all processor constructors.
-                    # A practical approach: is_applicable should ideally be a static method or class method.
-                    # If it *must* be an instance method, the instance must be creatable.
-
-                    # Let's assume a temporary, simplified instantiation for the check if possible,
-                    # or that the check is robust enough.
-                    # This is a placeholder for a potentially more complex instantiation for checking.
-                    # A common pattern is to pass graphics_path and output_dir to the constructor.
-                    # If is_applicable doesn't use them, it's fine.
-                    # For now, we pass dummy values as they are expected by the base class constructor (implicitly).
-                    # This will be an issue if processors *require* valid paths in their __init__ for is_applicable to work.
-
-                    # Simplification: We assume `is_applicable` can be called on an instance
-                    # created with placeholder paths if the actual paths are not used by `is_applicable`.
-                    # This will need to be true for all processor implementations.
-                    temp_output_dir = "" # Placeholder
-                    temp_graphics_path = "" # Placeholder
-
-                    # A more robust way:
-                    # proc_instance = processor_class_ref(graphics_path=self.some_default_graphics_path, output_dir=self.some_default_output_dir)
-                    # This requires having default paths available or making is_applicable static.
-                    # For now, we'll assume the test below is what's needed.
-                    # The GUI needs valid paths for actual processing, but maybe not for this check.
-                    # The current ProcessorBase does not define a constructor, so subclasses might.
-                    # This is a point of potential fragility.
-
-                    # Let's assume that `is_applicable` does not require initialized paths,
-                    # or that processors are robust to being instantiated with dummy paths for this check.
-                    # The `process` method will receive the correct paths.
-
-                    # Given the current structure, we must instantiate.
-                    # If `graphics_path` and `output_dir` are needed by `is_applicable`,
-                    # they should be available here. Let's assume they are not strictly needed for the check.
-
-                    # Create a dummy instance to call is_applicable
-                    # This assumes __init__(self, graphics_path, output_dir) signature for all processors
-                    # This is a potential issue if processors have different __init__ signatures.
-                    # The base class does not enforce __init__ signature.
-
-                    # Fallback: if a processor cannot be instantiated easily for a check,
-                    # this logic will fail. The `is_applicable` method should ideally be a
-                    # static method on the processor class for this exact reason.
-                    # processor_instance = processor_class_ref(None, None) # Simplest attempt
-
-                    # Given the refactored `create_all_svgs`, processors are instantiated with:
-                    # processor_class(graphics_path=graphics_path, output_dir=output_dir)
-                    # We should mimic this if these are needed for `is_applicable`.
-                    # However, `graphics_path` and `output_dir` are not readily available in `_render_table`
-                    # without passing them down or making them class attributes.
-
-                    # Simplest approach: Try to call it as a static method if possible,
-                    # or assume it can be called on a class instance that might not be fully initialized.
-                    # This is a known limitation of this dynamic approach if `is_applicable` is complex.
-
-                    # Let's assume `is_applicable` can be called from a class reference if it's static
-                    # or that we can create a temporary instance.
-                    # For now, we cannot reliably instantiate here without making assumptions about constructors.
-                    #
-                    # WORKAROUND/SIMPLIFICATION for get_svg_processor:
-                    # Since we cannot reliably instantiate here for all processors without knowing their constructors,
-                    # and `is_applicable` is an instance method, this `get_svg_processor` for the table
-                    # display becomes problematic.
-                    #
-                    # Option 1: Make `is_applicable` a @classmethod or @staticmethod. (Best solution, requires processor changes)
-                    # Option 2: Attempt a simple instantiation. (Fragile)
-                    # Option 3: Remove this "SVG Processor" column from the table if it's too hard to compute reliably.
-                    # Option 4: Pass necessary paths to _render_table.
-                    #
-                    # Let's try Option 2 with a try-except, but acknowledge its fragility.
-                    try:
-                        # This assumes a constructor that can take no args, or default args,
-                        # or that graphics_path/output_dir are not used by is_applicable.
-                        # This is a major assumption.
-                        # A better way for ProcessorBase would be:
-                        # @staticmethod or @classmethod
-                        # def is_row_applicable(row_data: pd.Series, config_params_if_needed) -> bool:
-
-                        # If processors follow `__init__(self, graphics_path, output_dir)`:
-                        # This is still problematic as we don't have those paths here easily.
-                        #
-                        # TEMPORARY: Return "Dynamic" as we can't easily determine it per row here
-                        # without significant changes to either processors or how this GUI function works.
-                        # The actual processing in `create_all_svgs` and `create_design_for_selected` *will* use the correct logic.
-                        # This is just for display in the table.
-                        #
-                        # For the purpose of this refactoring, we will simplify this display part.
-                        # The real test is if the `create_all_svgs` and `create_design_for_selected` work.
-                        # We can make is_applicable a class method in a follow-up if needed.
-
-                        # Let's assume a simplified check for now for the display column,
-                        # or leave it to the processor to have a simple __init__
-                        # This is a known weak point in the current design for display purposes.
-                        # processor_obj = processor_class_ref(graphics_path="dummy", output_dir="dummy") # Example
-                        # if processor_obj.is_applicable(row):
-                        # applicable_processor_name = processor_name
-                        # break
-
-                        # Given the constraints, we cannot reliably call is_applicable here for display.
-                        # The actual processing logic in create_all_svgs and create_design_for_selected is more robust.
-                        # So, for this table display column, we might have to simplify or remove it.
-                        # To keep the column for now, we'll return a generic value.
-                        # This means the "SVG Processor" column will not be accurate until processors are refactored
-                        # to support a static check or easier instantiation for this display purpose.
-                        pass # Skip trying to determine for display for now.
-
-                    except TypeError: # Catches errors if constructor args are missing
-                        # self.log(f"Warning: Could not instantiate {processor_name} for applicability check in table.")
-                        pass # Cannot determine here
-                    except Exception as e_inst:
-                        # self.log(f"Error instantiating {processor_name} for display check: {e_inst}")
-                        pass
-
-
-            # The above loop for display is problematic. We will return a placeholder.
-            # The actual processor assignment happens during `create_all_svgs` and `create_design_for_selected`.
-            # This column is for display only and its accuracy is secondary to processing.
-            # To make this work, `is_applicable` should ideally be a class method or static method.
-            # For now, we'll just indicate it's dynamically determined.
-            return "Dynamic (see log)" # Placeholder until is_applicable can be called safely here
+            # The logic to dynamically determine the processor for display here was problematic
+            # due to instantiation issues within _render_table.
+            # The actual processor assignment happens during `create_all_svgs` and
+            # `create_design_for_selected`, which is more robust.
+            # This column is for display only.
+            # Returning a placeholder value.
+            return "Dynamic (see log)"
 
         df = df.copy()
         df['SVG Processor'] = df.apply(get_svg_processor, axis=1)
