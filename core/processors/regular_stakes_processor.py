@@ -6,9 +6,9 @@ from pathlib import Path
 
 from core.processors.base import ProcessorBase
 from core.processors import register_processor
-from core.processors.text_utils import TextUtils # Assuming TextUtils class
-from core.processors.svg_utils import SVGUtils # Assuming SVGUtils class
-from .text_utils import create_batch_csv # Changed to import from local text_utils
+from . import text_utils # Changed to module import
+from . import svg_utils   # Changed to module import
+# Removed specific create_batch_csv import, will use text_utils.create_batch_csv
 
 class RegularStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -16,8 +16,8 @@ class RegularStakesProcessor(ProcessorBase):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-        self.text_utils = TextUtils() # Initialize TextUtils
-        self.svg_utils = SVGUtils()   # Initialize SVGUtils
+        self.text_utils = text_utils # Assign module
+        self.svg_utils = svg_utils     # Assign module
 
         # Constants from original class (might need refactoring or be part of SVGUtils)
         self.CATEGORY = 'COLOUR' # Used in original filename, might need to be dynamic
@@ -232,8 +232,8 @@ class RegularStakesProcessor(ProcessorBase):
                     page_filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}.svg"
                     self._create_memorial_page_svg(orders_dict_list, batch_num, page_filename)
 
-                # Use the centralized CSV creation utility (already imported at top of file)
-                create_batch_csv(orders_dict_list, batch_num, self.CATEGORY, self.output_dir, self.date_str)
+                # Use the centralized CSV creation utility via the text_utils module
+                self.text_utils.create_batch_csv(orders_dict_list, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
 
         print(f"[{self.CATEGORY}] processing complete. {total_items} items processed into {batch_num - 1} SVG/CSV file(s).")

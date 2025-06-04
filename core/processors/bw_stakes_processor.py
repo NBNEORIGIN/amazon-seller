@@ -5,9 +5,9 @@ from datetime import datetime # For self.date_str, similar to MemorialBase
 
 from core.processors.base import ProcessorBase
 from core.processors import register_processor
-from core.processors.text_utils import TextUtils # Assuming TextUtils class
-from core.processors.svg_utils import SVGUtils # Assuming SVGUtils class
-from .text_utils import create_batch_csv # Changed to import from local text_utils
+from . import text_utils # Changed to module import
+from . import svg_utils   # Changed to module import
+# Removed specific create_batch_csv import, will use text_utils.create_batch_csv
 
 class BWStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -15,8 +15,8 @@ class BWStakesProcessor(ProcessorBase):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-        self.text_utils = TextUtils()
-        self.svg_utils = SVGUtils()
+        self.text_utils = text_utils # Assign module
+        self.svg_utils = svg_utils     # Assign module
 
         self.CATEGORY = 'B&W' # Used for filename generation
         self.date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -113,7 +113,7 @@ class BWStakesProcessor(ProcessorBase):
 
                 self._create_memorial_page_svg(orders_for_svg, filename)
 
-                create_batch_csv(orders_for_svg, batch_num, self.CATEGORY, self.output_dir, self.date_str)
+                self.text_utils.create_batch_csv(orders_for_svg, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 print(f"Processed B&W batch {batch_num}.")
                 batch_num += 1
 

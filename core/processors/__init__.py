@@ -32,17 +32,25 @@ def discover_processors():
 
                 # After importing, check for classes that subclass ProcessorBase
                 # and call register_processor if they haven't self-registered.
-                # Typically, processors should self-register using `register_processor`
-                # at the end of their respective files.
                 for name, obj in inspect.getmembers(module):
-                    if inspect.isclass(obj) and                        issubclass(obj, ProcessorBase) and                        obj is not ProcessorBase and                        name not in PROCESSOR_REGISTRY and                        not getattr(obj, '_is_abstract', False): # Check for an optional _is_abstract attribute
-                        # Attempt to infer a name if not explicitly registered
-                        # This is a fallback, explicit registration is preferred.
+                    if inspect.isclass(obj) and                        issubclass(obj, ProcessorBase) and                        obj is not ProcessorBase and                        not getattr(obj, '_is_abstract', False): # Check for an optional _is_abstract attribute
+
+                        # CHECK IF CLASS OBJECT ITSELF IS ALREADY REGISTERED AS A VALUE
+                        if obj in PROCESSOR_REGISTRY.values():
+                            # print(f"Processor class {obj.__name__} already registered. Skipping auto-registration.")
+                            continue
+
+                        # Attempt to infer a name if not explicitly registered by this name
                         processor_instance_name = name.replace("Processor", "").lower()
-                        if processor_instance_name not in PROCESSOR_REGISTRY:
+
+                        # Check if the auto-generated name OR the class name itself is already a key
+                        if name not in PROCESSOR_REGISTRY and processor_instance_name not in PROCESSOR_REGISTRY:
                              print(f"Auto-registering processor '{name}' as '{processor_instance_name}'. "
                                    "Consider explicit registration in the module.")
                              register_processor(processor_instance_name, obj)
+                        # If 'name' (original class name) is in registry but 'obj' is different, it's a name collision from different class (unlikely here)
+                        # If 'processor_instance_name' is in registry but 'obj' is different, also a name collision.
+                        # The check `obj in PROCESSOR_REGISTRY.values()` is the most robust for preventing double registration of the same class.
 
             except ImportError as e:
                 print(f"Error importing processor module {full_module_name}: {e}")

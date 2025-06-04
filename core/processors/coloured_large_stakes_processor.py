@@ -5,9 +5,9 @@ from datetime import datetime
 
 from core.processors.base import ProcessorBase
 from core.processors import register_processor
-from core.processors.text_utils import TextUtils
-from core.processors.svg_utils import SVGUtils
-from .text_utils import create_batch_csv # Changed to import from local text_utils
+from . import text_utils # Changed to module import
+from . import svg_utils   # Changed to module import
+# Removed specific create_batch_csv import, will use text_utils.create_batch_csv
 
 class ColouredLargeStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -15,8 +15,8 @@ class ColouredLargeStakesProcessor(ProcessorBase):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-        self.text_utils = TextUtils()
-        self.svg_utils = SVGUtils()
+        self.text_utils = text_utils # Assign module
+        self.svg_utils = svg_utils     # Assign module
 
         self.CATEGORY = 'COLOURED_LARGE_STAKES'
         self.date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -95,7 +95,7 @@ class ColouredLargeStakesProcessor(ProcessorBase):
                 filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}_No_Jig.svg" # Original had "_No Jig"
 
                 self._create_memorial_page_svg(orders_for_svg_page, filename)
-                create_batch_csv(orders_for_svg_page, batch_num, self.CATEGORY, self.output_dir, self.date_str)
+                self.text_utils.create_batch_csv(orders_for_svg_page, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
 
     def _add_item_to_svg_page(self, dwg, x_item_start: float, y_item_start: float, order_details: dict):

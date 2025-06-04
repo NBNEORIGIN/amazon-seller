@@ -7,9 +7,9 @@ from datetime import datetime
 
 from core.processors.base import ProcessorBase
 from core.processors import register_processor
-from core.processors.text_utils import TextUtils
-from core.processors.svg_utils import SVGUtils
-from .text_utils import create_batch_csv # Changed to import from local text_utils
+from . import text_utils # Changed to module import
+from . import svg_utils   # Changed to module import
+# Removed specific create_batch_csv import, will use text_utils.create_batch_csv
 
 class ColouredSmallStakesTemplateProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str, template_path: str = None): # template_path is optional
@@ -20,8 +20,8 @@ class ColouredSmallStakesTemplateProcessor(ProcessorBase):
         self.template_path = template_path
         os.makedirs(self.output_dir, exist_ok=True)
 
-        self.text_utils = TextUtils()
-        self.svg_utils = SVGUtils()
+        self.text_utils = text_utils # Assign module
+        self.svg_utils = svg_utils     # Assign module
 
         self.CATEGORY = "COLOURED_SMALL_STAKES"
         self.date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -87,7 +87,7 @@ class ColouredSmallStakesTemplateProcessor(ProcessorBase):
 
                 self._generate_svg_page_for_batch(current_batch_df, filename)
 
-                create_batch_csv(current_batch_df.to_dict('records'), batch_num, self.CATEGORY, self.output_dir, self.date_str)
+                self.text_utils.create_batch_csv(current_batch_df.to_dict('records'), batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 # The old direct to_csv call is now replaced by the utility.
                 # csv_out_path = os.path.join(self.output_dir, os.path.splitext(filename)[0] + ".csv")
                 # current_batch_df.to_csv(csv_out_path, index=False, encoding="utf-8-sig")

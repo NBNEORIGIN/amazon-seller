@@ -4,7 +4,7 @@ import pandas as pd
 from .base import ProcessorBase
 from . import register_processor
 from .svg_utils import draw_rounded_rect, add_multiline_text # Assuming these are sufficient for svgwrite
-from .text_utils import create_batch_csv # Changed to import from local text_utils
+# Removed specific create_batch_csv import, will use text_utils.create_batch_csv
 # We'll need to ensure svg_utils has embed_image and add_reference_point,
 # and text_utils has split_line_to_fit and check_grammar_and_typos.
 
@@ -269,7 +269,7 @@ class BWLargePhotoStakesProcessor(ProcessorBase):
             batch_df = applicable_df.iloc[i:i + items_per_page]
             if not batch_df.empty:
                 self._create_memorial_page_svg(batch_df, batch_num)
-                create_batch_csv(batch_df.to_dict('records'), batch_num, self.CATEGORY, self.output_dir, self.date_str)
+                self.text_utils.create_batch_csv(batch_df.to_dict('records'), batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
 
         print(f"{self.CATEGORY} processing complete. {len(applicable_df)} orders processed into {batch_num-1} file(s).")
