@@ -289,21 +289,22 @@ class RegularStakesProcessor(ProcessorBase):
 
                 graphic_full_path = os.path.join(self.graphics_path, graphic_filename)
                 if os.path.exists(graphic_full_path):
-                    try:
-                        # Assuming svg_utils.embed_image returns base64 encoded string
-                        embedded_image_data = self.svg_utils.embed_image(graphic_full_path)
-                        if embedded_image_data:
-                            dwg.add(dwg.image(
-                                href=embedded_image_data,
-                                insert=(x_pos, y_pos),
-                                size=(self.memorial_width_px, self.memorial_height_px)
-                            ))
-                        else:
-                            print(f"Warning: Failed to embed graphic {graphic_filename} for order {order_item.get('order-id')}")
-                    except Exception as e:
-                        print(f"Error embedding graphic {graphic_filename}: {e}")
-                else:
-                    print(f"Warning: Graphic file not found: {graphic_full_path} for order {order_item.get('order-id')}")
+                    # Define insert and size for the image
+                    img_insert_pos = (x_pos, y_pos)
+                    img_size = (self.memorial_width_px, self.memorial_height_px)
+
+                    # Call embed_image correctly
+                    img_obj = self.svg_utils.embed_image(
+                        dwg,
+                        image_path=graphic_full_path,
+                        insert=img_insert_pos,
+                        size=img_size
+                        # defs=dwg.defs # Optional for pixelated style
+                    )
+                    if img_obj is None:
+                        # The embed_image function itself prints warnings for not found / errors
+                        print(f"Further Warning: Embedding graphic {graphic_filename} failed for order {order_item.get('order-id')}")
+                # embed_image handles "not found" case, so no specific else needed here for that.
 
             # --- Add Text ---
             center_x_abs = x_pos + (self.memorial_width_px / 2)
@@ -348,15 +349,19 @@ class RegularStakesProcessor(ProcessorBase):
                         self.svg_utils.add_multiline_text(
                             dwg, lines_to_draw,
                             insert_x=center_x_abs, insert_y=(y_pos + y_offset_mm * self.px_per_mm),
-                            font_size_mm=(current_font_size_pt * self.pt_to_mm),
+                            font_size_mm=(current_font_size_pt * self.pt_to_mm), # Use font_size_mm
                             font_family=font_family, text_anchor="middle", fill=fill_color
                         )
                 else: # line_1, line_2 (single line centered)
-                     self.svg_utils.add_text(
-                         dwg, text_content,
-                         insert_x=center_x_abs, insert_y=(y_pos + y_offset_mm * self.px_per_mm),
-                         font_size_mm=(font_size_pt * self.pt_to_mm),
-                         font_family=font_family, text_anchor="middle", fill=fill_color
+                     self.svg_utils.add_multiline_text(
+                         dwg,
+                         lines=[text_content], # Pass the single line as a list
+                         insert_x=center_x_abs,
+                         insert_y=(y_pos + y_offset_mm * self.px_per_mm),
+                         font_size_mm=(font_size_pt * self.pt_to_mm), # Use font_size_mm
+                         font_family=font_family,
+                         text_anchor="middle",
+                         fill=fill_color
                      )
 
         # Add reference point (bottom right corner of the page)

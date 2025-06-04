@@ -6,8 +6,8 @@ from datetime import datetime
 
 from core.processors.base import ProcessorBase
 from core.processors import register_processor
-from core.processors.text_utils import TextUtils
-from core.processors.svg_utils import SVGUtils
+from . import text_utils # Changed to module import
+from . import svg_utils   # Changed to module import
 
 class PhotoStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -15,8 +15,8 @@ class PhotoStakesProcessor(ProcessorBase):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
 
-        self.text_utils = TextUtils()
-        self.svg_utils = SVGUtils()
+        self.text_utils = text_utils # Assign module
+        self.svg_utils = svg_utils     # Assign module
 
         self.CATEGORY = 'PHOTO'
         self.date_str = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -112,13 +112,23 @@ class ColouredLargeStakesProcessor(ProcessorBase):
         graphic_filename = str(order_details.get('GRAPHIC', '')).strip() # Original used uppercase keys
         if graphic_filename:
             graphic_full_path = os.path.join(self.graphics_path, graphic_filename)
-            if os.path.exists(graphic_full_path):
-                embedded_image_data = self.svg_utils.embed_image(graphic_full_path)
-                if embedded_image_data:
-                    dwg.add(dwg.image(href=embedded_image_data, insert=(x_item_start, y_item_start),
-                                      size=(self.memorial_width_px, self.memorial_height_px)))
-            else:
-                print(f"Warning: Graphic file not found: {graphic_full_path}")
+            # Define insert and size for the image
+            img_insert_pos = (x_item_start, y_item_start)
+            img_size = (self.memorial_width_px, self.memorial_height_px)
+
+            # Call embed_image correctly
+            img_obj = self.svg_utils.embed_image(
+                dwg,
+                image_path=graphic_full_path,
+                insert=img_insert_pos,
+                size=img_size
+                # defs=dwg.defs # Optional for pixelated style
+            )
+            if img_obj is None:
+                # embed_image itself now prints warnings for not found / errors
+                # but we can add a specific one for this processor context if needed.
+                print(f"Warning: Embedding graphic {graphic_filename} failed for order {order_details.get('order-id')}")
+            # Removed redundant: else: print(f"Warning: Graphic file not found: {graphic_full_path}") as embed_image handles this.
 
         # Text
         center_x_abs = x_item_start + self.memorial_width_px / 2

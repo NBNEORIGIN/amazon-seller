@@ -198,13 +198,21 @@ class ColouredLargePhotoStakesProcessor(ProcessorBase):
                     if line_key == 'line_3':
                         # Use TextUtils for potentially multi-line text:
                         lines = self.text_utils.split_line_to_fit_multiline(text_content, max_chars_per_line=30, max_lines=2) # Example values
-                        self.svg_utils.add_multiline_text(dwg, lines, insert_x=text_center_x, insert_y=y_abs_px,
-                                                          font_size_pt=font_size_final_pt, font_family="Georgia",
-                                                          text_anchor="middle", fill="black", line_spacing_factor=1.2)
-                    else: # Single line text
-                        self.svg_utils.add_text(dwg, text_content, insert_x=text_center_x, insert_y=y_abs_px,
-                                                font_size_pt=font_size_final_pt, font_family="Georgia",
-                                                text_anchor="middle", fill="black")
+                        self.svg_utils.add_multiline_text(dwg, lines,
+                                                          insert=(text_center_x, y_abs_px), # Ensure insert is a tuple
+                                                          font_size=f"{font_size_final_pt}pt", # Pass as string with unit
+                                                          font_family="Georgia",
+                                                          anchor="middle", # Parameter name is 'anchor'
+                                                          fill="black",
+                                                          line_spacing_factor=1.2)
+                    else: # Single line text for line_1 and line_2
+                        self.svg_utils.add_multiline_text(dwg,
+                                                          lines=[text_content], # Pass single line as list
+                                                          insert=(text_center_x, y_abs_px), # Ensure insert is a tuple
+                                                          font_size=f"{font_size_final_pt}pt", # Pass as string with unit
+                                                          font_family="Georgia",
+                                                          anchor="middle", # Parameter name is 'anchor'
+                                                          fill="black")
         except Exception as e:
             print(f"Error in _add_item_to_svg_page for order {order_details.get('order-id', 'unknown')}: {e}\n{traceback.format_exc()}")
 
