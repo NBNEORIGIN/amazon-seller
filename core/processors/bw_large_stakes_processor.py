@@ -7,6 +7,7 @@ from core.processors.base import ProcessorBase
 from core.processors import register_processor
 from core.processors.text_utils import TextUtils
 from core.processors.svg_utils import SVGUtils
+from .text_utils import create_batch_csv # Added import
 
 class BWLargeStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -102,7 +103,7 @@ class BWLargeStakesProcessor(ProcessorBase):
                     filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}.svg"
 
                 self._create_memorial_page_svg(orders_for_svg_page, filename)
-                # self._create_batch_csv(...) # If CSVs per page are needed
+                create_batch_csv(orders_for_svg_page, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
 
         # The original also had a final CSV export of ALL processed large_stakes.

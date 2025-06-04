@@ -8,6 +8,7 @@ from core.processors.base import ProcessorBase
 from core.processors import register_processor
 from core.processors.text_utils import TextUtils # Assuming TextUtils class
 from core.processors.svg_utils import SVGUtils # Assuming SVGUtils class
+from .text_utils import create_batch_csv # Changed to import from local text_utils
 
 class RegularStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -146,9 +147,7 @@ class RegularStakesProcessor(ProcessorBase):
                     page_filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}.svg"
                     self._create_memorial_page_svg(orders_for_svg, batch_num, page_filename)
 
-                # TODO: Adapt or call self._create_batch_csv(orders_for_svg, batch_num, self.CATEGORY)
-                # This method was in MemorialBase, needs to be implemented or replaced.
-                # For now, we'll skip CSV generation.
+                create_batch_csv(orders_for_svg, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 print(f"Processed batch {batch_num} for Regular Stakes.")
                 batch_num += 1
 
@@ -286,16 +285,6 @@ class RegularStakesProcessor(ProcessorBase):
             print(f"SVG page generated: {output_path}")
         except Exception as e:
             print(f"Error saving SVG {output_path}: {e}")
-
-    # Placeholder for create_batch_csv - this was in MemorialBase
-    def _create_batch_csv(self, orders_dict, batch_num, category):
-        # This method needs to be implemented based on the original MemorialBase.create_batch_csv
-        # For now, it does nothing.
-        # It would typically involve creating a DataFrame from orders_dict
-        # and saving it to a CSV file named appropriately for the batch.
-        # Example: df = pd.DataFrame(orders_dict); df.to_csv(...)
-        print(f"Warning: _create_batch_csv not fully implemented for batch {batch_num}, category {category}.")
-        pass
 
 # Register the processor
 register_processor("regular_stakes", RegularStakesProcessor)

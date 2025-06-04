@@ -4,6 +4,7 @@ import pandas as pd
 from .base import ProcessorBase
 from . import register_processor
 from .svg_utils import draw_rounded_rect, add_multiline_text # Assuming these are sufficient for svgwrite
+from .text_utils import create_batch_csv # Changed to import from local text_utils
 # We'll need to ensure svg_utils has embed_image and add_reference_point,
 # and text_utils has split_line_to_fit and check_grammar_and_typos.
 
@@ -228,33 +229,12 @@ class BWLargePhotoStakesProcessor(ProcessorBase):
         print(f"Generated SVG: {filepath}")
 
         # Create batch CSV if the utility exists
-        if hasattr(self, '_create_batch_csv'): # Check if method exists
-             self._create_batch_csv(batch_orders_df.to_dict('records'), batch_num, self.CATEGORY)
+        # This call was originally here, but it's better to call it from the process method
+        # if hasattr(self, '_create_batch_csv'): # Check if method exists
+        #      self._create_batch_csv(batch_orders_df.to_dict('records'), batch_num, self.CATEGORY)
 
 
-    def _create_batch_csv(self, orders_list_of_dicts, batch_num, category):
-        # Simplified CSV creation, similar to other processors
-        if not orders_list_of_dicts:
-            return
-
-        # Convert list of dicts to DataFrame, ensuring consistent column order
-        # Define expected columns to match other processor outputs if possible
-        # This is a placeholder, actual columns might vary based on `orders_list_of_dicts`
-        df_batch = pd.DataFrame(orders_list_of_dicts)
-
-        # Ensure common columns are present, add if missing
-        # Example: 'order-id', 'sku', 'line_1', 'line_2', 'line_3', 'image_path'
-        # This part needs to be robust to missing keys in the dicts or df.
-
-        csv_filename = f"{category}_{self.date_str}_{batch_num:03d}.csv"
-        csv_filepath = os.path.join(self.output_dir, csv_filename)
-
-        try:
-            df_batch.to_csv(csv_filepath, index=False, encoding='utf-8-sig')
-            print(f"Generated CSV: {csv_filepath}")
-        except Exception as e:
-            print(f"Error generating CSV {csv_filepath}: {e}")
-
+    # Removed local _create_batch_csv method, will use utility from core.utils
 
     def process(self, order_data: pd.DataFrame, output_dir: str, graphics_path: str):
         # Ensure paths are updated if different from __init__ (they should be the same)
@@ -289,11 +269,7 @@ class BWLargePhotoStakesProcessor(ProcessorBase):
             batch_df = applicable_df.iloc[i:i + items_per_page]
             if not batch_df.empty:
                 self._create_memorial_page_svg(batch_df, batch_num)
-                # The _create_batch_csv is called inside _create_memorial_page_svg in the original,
-                # but it's better to call it here for clarity if it operates on the batch_df.
-                # However, to match original structure more closely for now:
-                # self._create_batch_csv(batch_df.to_dict('records'), batch_num, self.CATEGORY)
-                # This was moved into _create_memorial_page_svg to match original logic flow.
+                create_batch_csv(batch_df.to_dict('records'), batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
 
         print(f"{self.CATEGORY} processing complete. {len(applicable_df)} orders processed into {batch_num-1} file(s).")

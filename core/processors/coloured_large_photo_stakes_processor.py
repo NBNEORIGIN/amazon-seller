@@ -8,6 +8,7 @@ from core.processors.base import ProcessorBase
 from core.processors import register_processor
 from core.processors.text_utils import TextUtils
 from core.processors.svg_utils import SVGUtils
+from .text_utils import create_batch_csv # Added import
 
 class ColouredLargePhotoStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -129,7 +130,7 @@ class ColouredLargePhotoStakesProcessor(ProcessorBase):
                     filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}.svg"
 
                 self._create_memorial_page_svg(orders_for_svg_page, filename)
-                # self._create_batch_csv(...) # If CSVs are needed per page
+                create_batch_csv(orders_for_svg_page, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
 
     def _add_item_to_svg_page(self, dwg, x_item_start: float, y_item_start: float, order_details: dict):

@@ -9,6 +9,7 @@ from core.processors.base import ProcessorBase
 from core.processors import register_processor
 from core.processors.text_utils import TextUtils
 from core.processors.svg_utils import SVGUtils
+from .text_utils import create_batch_csv # Changed to import from local text_utils
 
 class ColouredSmallStakesTemplateProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str, template_path: str = None): # template_path is optional
@@ -86,10 +87,11 @@ class ColouredSmallStakesTemplateProcessor(ProcessorBase):
 
                 self._generate_svg_page_for_batch(current_batch_df, filename)
 
-                # Output corresponding CSV file for this batch
-                csv_out_path = os.path.join(self.output_dir, os.path.splitext(filename)[0] + ".csv")
-                current_batch_df.to_csv(csv_out_path, index=False, encoding="utf-8-sig")
-                print(f"Wrote batch CSV: {csv_out_path}")
+                create_batch_csv(current_batch_df.to_dict('records'), batch_num, self.CATEGORY, self.output_dir, self.date_str)
+                # The old direct to_csv call is now replaced by the utility.
+                # csv_out_path = os.path.join(self.output_dir, os.path.splitext(filename)[0] + ".csv")
+                # current_batch_df.to_csv(csv_out_path, index=False, encoding="utf-8-sig")
+                # print(f"Wrote batch CSV: {csv_out_path}")
                 batch_num += 1
 
     def _generate_svg_page_for_batch(self, batch_orders_df: pd.DataFrame, filename: str):

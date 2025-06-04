@@ -7,6 +7,7 @@ from core.processors.base import ProcessorBase
 from core.processors import register_processor
 from core.processors.text_utils import TextUtils
 from core.processors.svg_utils import SVGUtils
+from .text_utils import create_batch_csv # Changed to import from local text_utils
 
 class ColouredLargeStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -94,7 +95,7 @@ class ColouredLargeStakesProcessor(ProcessorBase):
                 filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}_No_Jig.svg" # Original had "_No Jig"
 
                 self._create_memorial_page_svg(orders_for_svg_page, filename)
-                self._create_batch_csv(orders_for_svg_page, batch_num, self.CATEGORY)
+                create_batch_csv(orders_for_svg_page, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 batch_num += 1
 
     def _add_item_to_svg_page(self, dwg, x_item_start: float, y_item_start: float, order_details: dict):
@@ -176,16 +177,6 @@ class ColouredLargeStakesProcessor(ProcessorBase):
             print(f"Coloured Large Stake SVG page generated: {output_path}")
         except Exception as e:
             print(f"Error saving Coloured Large Stake SVG {output_path}: {e}")
-
-    def _create_batch_csv(self, orders_list: list, batch_number: int, category_name: str):
-        # Placeholder - original create_batch_csv from MemorialBase would be used or reimplemented
-        if orders_list:
-            df_batch = pd.DataFrame(orders_list)
-            csv_filename = os.path.join(self.output_dir, f"{category_name}_{self.date_str}_batch_{batch_number:03d}.csv")
-            df_batch.to_csv(csv_filename, index=False, encoding="utf-8-sig")
-            print(f"Wrote batch CSV: {csv_filename}")
-        else:
-            print(f"No data to write for batch CSV {batch_number} in category {category_name}")
 
 # Register the processor
 register_processor("coloured_large_stakes", ColouredLargeStakesProcessor)

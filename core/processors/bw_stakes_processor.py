@@ -7,6 +7,7 @@ from core.processors.base import ProcessorBase
 from core.processors import register_processor
 from core.processors.text_utils import TextUtils # Assuming TextUtils class
 from core.processors.svg_utils import SVGUtils # Assuming SVGUtils class
+from .text_utils import create_batch_csv # Changed to import from local text_utils
 
 class BWStakesProcessor(ProcessorBase):
     def __init__(self, graphics_path: str, output_dir: str):
@@ -112,8 +113,7 @@ class BWStakesProcessor(ProcessorBase):
 
                 self._create_memorial_page_svg(orders_for_svg, filename)
 
-                # Placeholder for CSV generation
-                # self._create_batch_csv(orders_for_svg, batch_num, self.CATEGORY)
+                create_batch_csv(orders_for_svg, batch_num, self.CATEGORY, self.output_dir, self.date_str)
                 print(f"Processed B&W batch {batch_num}.")
                 batch_num += 1
 
@@ -231,11 +231,6 @@ class BWStakesProcessor(ProcessorBase):
             print(f"B&W Stake SVG page generated: {output_path}")
         except Exception as e:
             print(f"Error saving B&W SVG {output_path}: {e}")
-
-    # Placeholder for _create_batch_csv
-    def _create_batch_csv(self, orders_list, batch_number, category_name):
-        print(f"Warning: _create_batch_csv not implemented for B&W stakes batch {batch_number}, category {category_name}.")
-        pass
 
 # Register the processor
 register_processor("bw_stakes", BWStakesProcessor)
