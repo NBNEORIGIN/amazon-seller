@@ -184,11 +184,15 @@ class PhotoStakesProcessor(ProcessorBase):
                 if text_content:
                     y_pos_abs = y_item_offset + (line_y_offsets_mm[line_key] * self.px_per_mm)
                     # For photo stakes, text is usually single line and centered in its allocated text area.
-                    # If multi-line or complex wrapping is needed for photo stake text, TextUtils should handle it.
-                    self.svg_utils.add_text(dwg, text_content,
-                                            insert_x=text_center_x, insert_y=y_pos_abs,
-                                            font_size_mm=(font_sizes_pt[line_key] * self.pt_to_mm),
-                                            font_family="Georgia", text_anchor="middle", fill="black")
+                    # Using add_multiline_text for consistency, passing text as a single-item list.
+                    font_size_as_mm_str = f"{font_sizes_pt[line_key] * self.pt_to_mm:.2f}mm" # Format as string with "mm"
+                    self.svg_utils.add_multiline_text(dwg,
+                                                      lines=[text_content],
+                                                      insert=(text_center_x, y_pos_abs),
+                                                      font_size=font_size_as_mm_str,
+                                                      font_family="Georgia",
+                                                      anchor="middle",
+                                                      fill="black")
         except Exception as e:
             print(f"Error in _add_photo_item_to_svg for order {order_details.get('order-id', 'unknown')}: {e}")
 

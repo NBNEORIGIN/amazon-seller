@@ -149,21 +149,28 @@ class ColouredLargeStakesProcessor(ProcessorBase):
 
         text_l1 = self.text_utils.check_grammar_and_typos(str(order_details.get('LINE_1', '')))
         lines_l1 = self.text_utils.split_line_to_fit(text_l1, 30) # Assuming 30 char width
-        self.svg_utils.add_multiline_text_svgwrite(dwg, lines_l1, insert=(center_x_abs, y1_abs),
-                                          font_size_px=self.line1_font_size_px, font_family="Georgia",
-                                          text_anchor="middle", fill="black")
+        if lines_l1 : # Ensure there is text to add
+            self.svg_utils.add_multiline_text(dwg, lines_l1, insert=(center_x_abs, y1_abs),
+                                            font_size=f"{self.line1_font_size_px}px", font_family="Georgia",
+                                            anchor="middle", fill="black")
 
         text_l2 = self.text_utils.check_grammar_and_typos(str(order_details.get('LINE_2', '')))
         lines_l2 = self.text_utils.split_line_to_fit(text_l2, 30)
-        self.svg_utils.add_multiline_text_svgwrite(dwg, lines_l2, insert=(center_x_abs, y2_abs),
-                                          font_size_px=current_line2_font_size_px, font_family="Georgia",
-                                          text_anchor="middle", fill="black")
+        if lines_l2: # Ensure there is text to add
+            self.svg_utils.add_multiline_text(dwg, lines_l2, insert=(center_x_abs, y2_abs),
+                                            font_size=f"{current_line2_font_size_px}px", font_family="Georgia",
+                                            anchor="middle", fill="black")
 
         text_l3 = self.text_utils.check_grammar_and_typos(str(order_details.get('LINE_3', '')))
         lines_l3 = self.text_utils.split_line_to_fit(text_l3, 30)
-        self.svg_utils.add_multiline_text_svgwrite(dwg, lines_l3, insert=(center_x_abs, y3_abs),
-                                          font_size_px=self.line3_font_size_px, font_family="Georgia",
-                                          text_anchor="middle", fill="black", line_spacing_px=(47.11817)) # Original spacing
+        if lines_l3: # Ensure there is text to add
+            # The original line_spacing_px=(47.11817) is absolute.
+            # add_multiline_text uses a relative line_spacing_factor.
+            # We'd need to calculate the factor based on font_size_px if precise original spacing is vital.
+            # For now, using default factor from add_multiline_text.
+            self.svg_utils.add_multiline_text(dwg, lines_l3, insert=(center_x_abs, y3_abs),
+                                            font_size=f"{self.line3_font_size_px}px", font_family="Georgia",
+                                            anchor="middle", fill="black")
 
 
     def _create_memorial_page_svg(self, orders_on_page: list, filename: str):

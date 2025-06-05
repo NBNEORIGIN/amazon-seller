@@ -347,20 +347,22 @@ class RegularStakesProcessor(ProcessorBase):
 
                     if lines_to_draw:
                         self.svg_utils.add_multiline_text(
-                            dwg, lines_to_draw,
-                            insert_x=center_x_abs, insert_y=(y_pos + y_offset_mm * self.px_per_mm),
-                            font_size_mm=(current_font_size_pt * self.pt_to_mm), # Use font_size_mm
-                            font_family=font_family, text_anchor="middle", fill=fill_color
+                            dwg,
+                            lines_to_draw,
+                            insert=(center_x_abs, y_pos + y_offset_mm * self.px_per_mm), # Combined insert
+                            font_size=f"{(current_font_size_pt * self.pt_to_mm):.2f}mm", # font_size with unit
+                            font_family=font_family,
+                            anchor="middle", # Use anchor
+                            fill=fill_color
                         )
                 else: # line_1, line_2 (single line centered)
                      self.svg_utils.add_multiline_text(
                          dwg,
-                         lines=[text_content], # Pass the single line as a list
-                         insert_x=center_x_abs,
-                         insert_y=(y_pos + y_offset_mm * self.px_per_mm),
-                         font_size_mm=(font_size_pt * self.pt_to_mm), # Use font_size_mm
+                         lines=[text_content],
+                         insert=(center_x_abs, y_pos + y_offset_mm * self.px_per_mm), # Combined insert
+                         font_size=f"{(font_size_pt * self.pt_to_mm):.2f}mm", # font_size with unit
                          font_family=font_family,
-                         text_anchor="middle",
+                         anchor="middle", # Use anchor
                          fill=fill_color
                      )
 
