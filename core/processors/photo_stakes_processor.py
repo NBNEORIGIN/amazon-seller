@@ -26,7 +26,7 @@ class PhotoStakesProcessor(ProcessorBase):
         from datetime import datetime
         self.date_str = datetime.now().strftime("%Y%m%d_%H%M%S") # Timestamp for filenames
 
-        self.CATEGORY = 'PHOTO_STAKES' # Specific category name
+        self.CATEGORY = 'regular_photo_stakes' # Changed category name
 
         # --- Page and Grid Layout (to match regular_stakes for red bounding boxes) ---
         # Conversion factors (using values from user's sample for consistency within this processor)
