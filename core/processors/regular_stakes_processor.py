@@ -20,7 +20,7 @@ class RegularStakesProcessor(ProcessorBase):
         self.svg_utils = svg_utils     # Assign module
 
         # Constants from original class (might need refactoring or be part of SVGUtils)
-        self.CATEGORY = 'COLOUR' # Used in original filename, might need to be dynamic
+        self.CATEGORY = 'regular_stakes' # Changed category name
         self.grid_cols = 3
         self.grid_rows = 3
         self.batch_size = self.grid_cols * self.grid_rows # Page generation logic
@@ -226,9 +226,11 @@ class RegularStakesProcessor(ProcessorBase):
                     order_id = str(order.get('order-id', 'NO_ID')).strip()
                     sku = str(order.get('sku', 'NO_SKU')).strip()
                     graphic_val = str(order.get('graphic', 'NO_GRAPHIC')).strip().replace('.png', '')
-                    filename = f"REGULAR_{order_id}_{sku}_{graphic_val}.svg"
+                    # Updated single item filename format
+                    filename = f"{self.CATEGORY}_{self.date_str}_{order_id}_{sku}_{graphic_val}.svg"
                     self._create_memorial_page_svg(orders_dict_list, batch_num, filename)
                 else:
+                    # Batch filename will automatically use updated self.CATEGORY and self.date_str
                     page_filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}.svg"
                     self._create_memorial_page_svg(orders_dict_list, batch_num, page_filename)
 
@@ -269,8 +271,8 @@ class RegularStakesProcessor(ProcessorBase):
                 rx=self.corner_radius_px,
                 ry=self.corner_radius_px,
                 fill='none',
-                stroke='grey', # Changed from red to grey
-                stroke_width=self.stroke_width / 2 # Thinner
+                stroke='red', # Changed to red
+                stroke_width=self.stroke_width / 2
             ))
 
             # --- Apply graphic ---
