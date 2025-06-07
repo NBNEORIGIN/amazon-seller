@@ -12,7 +12,7 @@ from pathlib import Path
 class RegularStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
         super().__init__(graphics_path, output_dir)
-        self.CATEGORY = 'COLOUR'
+        self.CATEGORY = 'regular_stakes' # Updated CATEGORY
         self.grid_cols = 3
         self.grid_rows = 3
         self.batch_size = self.grid_cols * self.grid_rows
@@ -171,8 +171,10 @@ class RegularStakesProcessor(MemorialBase):
     def create_memorial_svg(self, orders, batch_num, output_path=None):
         if orders:
             print(f"Batch {batch_num} first order text fields: line_1={orders[0].get('line_1')}, line_2={orders[0].get('line_2')}, line_3={orders[0].get('line_3')}")
+
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         if output_path is None:
-            filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
+            filename = f"{self.CATEGORY}_{timestamp_str}_{batch_num:03d}.svg" # Updated filename
             output_path = os.path.join(self.OUTPUT_DIR, filename)
 
         dwg = svgwrite.Drawing(
@@ -329,6 +331,64 @@ class RegularStakesProcessor(MemorialBase):
 
         dwg.save()
         return dwg
+
+    def create_batch_csv(self, orders, batch_num, category):
+        """Create CSV file for the batch with specified category prefix, using a timestamp."""
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        # Generate filenames with timestamp
+        svg_reference_filename = f"{category}_{timestamp_str}_{batch_num:03d}.svg"
+        csv_filename = f"{category}_{timestamp_str}_{batch_num:03d}.csv"
+        design_file_ref = f"{category}_{timestamp_str}_{batch_num:03d}"
+
+        filepath = os.path.join(self.OUTPUT_DIR, csv_filename)
+
+        # Find all unique keys across all orders (for max flexibility)
+        all_keys = set()
+        for order in orders:
+            all_keys.update([k.upper() for k in order.keys()])
+
+        preferred_columns = [
+            'SVG FILE', 'DESIGN FILE', 'ORDER-ID', 'ORDER-ITEM-ID', 'SKU', 'NUMBER-OF-ITEMS',
+            'TYPE', 'COLOUR', 'GRAPHIC', 'LINE_1', 'LINE_2', 'LINE_3', 'THEME', 'WARNINGS'
+        ]
+        # Include any other columns present in the orders, case-insensitively
+        extra_columns = [col for col in all_keys if col not in preferred_columns and col not in [c.upper() for c in preferred_columns]]
+        columns = preferred_columns + sorted(list(extra_columns)) # Sort extra columns for consistency
+
+        data = []
+        for order in orders:
+            row = {}
+            row['SVG FILE'] = svg_reference_filename
+            row['DESIGN FILE'] = design_file_ref
+
+            # Populate standard and extra columns
+            for col_header in columns:
+                if col_header in ['SVG FILE', 'DESIGN FILE']:
+                    continue
+                # Try to get value from order using various casings of the key
+                val = order.get(col_header.lower(), order.get(col_header, order.get(col_header.upper(), '')))
+                # Special handling for 'number-of-items' if it might have a different casing in source
+                if col_header == 'NUMBER-OF-ITEMS' and val == '':
+                    val = order.get('number-of-items', '')
+                row[col_header] = val
+
+            row['WARNINGS'] = MemorialBase.generate_warnings(order) # Use static method from MemorialBase
+            data.append(row)
+
+        df = pd.DataFrame(data)
+        # Ensure column order for output, handling missing columns by adding them with empty values if necessary
+        final_df_columns = []
+        for col in columns:
+            if col in df.columns:
+                final_df_columns.append(col)
+            # else: # If a preferred column is somehow missing from all orders, it won't be added.
+                  # This is usually fine as it implies no data for it.
+
+        df = df[final_df_columns] # Reorder to preferred_columns + extra_columns
+        df.to_csv(filepath, index=False, encoding="utf-8")
+        print(f"Generated CSV: {filepath}")
+
 
     import sys
 

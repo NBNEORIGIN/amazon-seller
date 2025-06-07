@@ -15,8 +15,8 @@ class BWLargeStakesProcessor(MemorialBase):
         self.page_height_px = int(self.page_height_mm * self.px_per_mm)
         
         # Memorial dimensions for large stakes
-        self.memorial_width_mm = 220
-        self.memorial_height_mm = 150
+        self.memorial_width_mm = 200
+        self.memorial_height_mm = 120
         self.memorial_width_px = int(self.memorial_width_mm * self.px_per_mm)
         self.memorial_height_px = int(self.memorial_height_mm * self.px_per_mm)
         
