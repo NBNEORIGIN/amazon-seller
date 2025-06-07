@@ -6,7 +6,24 @@ import pandas as pd
 class BWStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
         super().__init__(graphics_path, output_dir)
-        self.CATEGORY = 'B&W'
+        self.CATEGORY = 'regular_bw_stakes'  # Updated CATEGORY
+
+        # Page dimensions specific to B&W Stakes
+        self.page_width_mm = 480
+        self.page_height_mm = 330
+
+        # Recalculate page pixel dimensions based on new mm values and px_per_mm from MemorialBase
+        self.page_width_px = int(self.page_width_mm * self.px_per_mm)
+        self.page_height_px = int(self.page_height_mm * self.px_per_mm)
+
+        # Memorial dimensions (assuming they are standard, as inherited from MemorialBase)
+        # self.memorial_width_mm = 140 (from MemorialBase)
+        # self.memorial_height_mm = 90 (from MemorialBase)
+        self.memorial_width_px = int(self.memorial_width_mm * self.px_per_mm)
+        self.memorial_height_px = int(self.memorial_height_mm * self.px_per_mm)
+
+        # x_offset_px and y_offset_px are no longer used for centering;
+        # positioning is absolute from bottom-right.
 
     def process_orders(self, df):
         # Normalize all column names to lowercase and strip
@@ -64,25 +81,34 @@ class BWStakesProcessor(MemorialBase):
                 batch_num += 1
 
     def create_memorial_svg(self, orders, batch_num):
-        filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
+        filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg" # self.CATEGORY is now 'regular_bw_stakes'
         output_path = os.path.join(self.OUTPUT_DIR, filename)
         
+        # Use updated page dimensions for SVG size
         dwg = svgwrite.Drawing(
             filename=output_path,
-            size=(f"{self.page_width_mm}mm", f"{self.page_height_mm}mm"),
-            viewBox=f"0 0 {self.page_width_px} {self.page_height_px}"
+            size=(f"{self.page_width_mm}mm", f"{self.page_height_mm}mm"), # Uses new page_width_mm, page_height_mm
+            viewBox=f"0 0 {self.page_width_px} {self.page_height_px}" # Uses new page_width_px, page_height_px
         )
         
-        # Process 3 memorials in top row
+        # Process up to 3 memorials with bottom-right placement
         for idx, order in enumerate(orders):
-            if idx >= 3:
+            if idx >= 3: # Max 3 orders
                 break
-                
-            row = 0  # Always top row
-            col = idx
-            x = self.x_offset_px + (col * self.memorial_width_px)
-            y = self.y_offset_px + (row * self.memorial_height_px)
             
+            # New placement logic (bottom-right)
+            if idx == 0:  # First item (bottom-right)
+                x = self.page_width_px - self.memorial_width_px
+                y = self.page_height_px - self.memorial_height_px
+            elif idx == 1:  # Second item (bottom edge, left of first)
+                x = self.page_width_px - (2 * self.memorial_width_px)
+                y = self.page_height_px - self.memorial_height_px
+            elif idx == 2:  # Third item (bottom edge, left of second)
+                x = self.page_width_px - (3 * self.memorial_width_px)
+                y = self.page_height_px - self.memorial_height_px
+            else: # Should not happen due to "if idx >= 3: break"
+                continue
+
             # Add memorial outline
             dwg.add(dwg.rect(
                 insert=(x, y),
@@ -191,16 +217,19 @@ class BWStakesProcessor(MemorialBase):
             else:
                 print(f"Warning: Missing text in line_3 for order {order.get('order-id', 'Unknown')}")
 
-        # Add reference point
+        # Add reference point (using the method from MemorialBase for consistency if desired, or keep specific one)
+        # For now, keeping the existing specific reference point logic from bw_stakes.py
+        # It might need adjustment if its position is critical relative to new page size.
+        # The y_pos calculation (289.8 - 0.011) * self.px_per_mm was likely tied to the old page_height_mm (289.9).
+        # Let's adjust it to be relative to the new page_height_px for bottom-right corner.
         ref_size_px = 0.1 * self.px_per_mm
-        x_pos = self.page_width_px - ref_size_px
-        y_pos = (289.8 - 0.011) * self.px_per_mm - ref_size_px
+        # x_pos = self.page_width_px - ref_size_px # This is correct for bottom-right
+        # y_pos = self.page_height_px - ref_size_px # This is correct for bottom-right
         
-        dwg.add(dwg.rect(
-            insert=(x_pos, y_pos),
-            size=(ref_size_px, ref_size_px),
-            fill='blue'
-        ))
+        # Using the inherited add_reference_point method is cleaner if it does what's needed.
+        # MemorialBase.add_reference_point places it at page_width_px - ref_size_px and page_height_px - ref_size_px
+        # This is likely the desired behavior for the new layout.
+        self.add_reference_point(dwg) # Use the method from MemorialBase
         
         dwg.save()
         return dwg

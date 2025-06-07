@@ -1,0 +1,12 @@
+order-id,sku,type,colour,decorationtype,graphic,line_1,line_2,line_3,number-of-items
+BW_REG_001,SKU_BW_REG_G1,Regular Stake,Black,Graphic,graphic1.png,In Loving Memory,John Doe,Always Remembered,1
+BW_REG_002,SKU_BW_REG_G2,Regular Stake,Black,Graphic,graphic2.png,Forever in Hearts,Jane Smith,Rest In Peace,1
+BW_REG_003,SKU_BW_REG_G3,Regular Stake,Black,Graphic,graphic3.png,Gone Too Soon,Baby Alex,Our Angel,1
+BW_REG_004,SKU_BW_REG_G4,Regular Stake,Black,Graphic,graphic4.png,Sadly Missed,Old Friend,Until We Meet Again,1
+BW_REG_PHOTO_001,SKU_BW_REG_P1,Regular Stake,Black,Photo,photo1.jpg,Photo Memorial,Our Star,,1
+BW_LARGE_001,SKU_BW_LRG_G1,Large Stake,Black,Graphic,graphic_large1.png,A Great Soul,Mr. Anderson,Never Forgotten,1
+BW_LARGE_002,SKU_BW_LRG_G2,Large Stake,Slate,Graphic,graphic_large2.png,Beloved Parent,Mrs. Davis,In Our Hearts,1
+BW_LARGE_003,SKU_BW_LRG_G3,Large Stake,Black,Graphic,graphic_large3.png,A Life Well Lived,Grandpa Joe,With Love,1
+BW_LARGE_PHOTO_001,SKU_BW_LRG_P1,Large Stake,Slate,Photo,photo_large1.jpg,Photo Memorial Large,Our Hero,,1
+REG_STAKE_GOLD,SKU_REG_GOLD,Regular Stake,Gold,Graphic,graphic_gold.png,Golden Memories,Friend,Shine On,1
+LARGE_STAKE_BLUE,SKU_LRG_BLUE,Large Stake,Blue,Graphic,graphic_blue.png,Blue Sky,Test Order,,1
