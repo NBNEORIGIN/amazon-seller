@@ -4,11 +4,11 @@ from memorial_base import MemorialBase
 import pandas as pd
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from core.processors.text_utils import split_line_to_fit # check_grammar_and_typos removed
+from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos # Restored check_grammar_and_typos
 from core.processors.svg_utils import draw_rounded_rect, add_multiline_text
 from datetime import datetime
 from pathlib import Path
-import language_tool_python # Added import for clarity, though MemorialBase also imports it
+# Removed: import language_tool_python
 
 class RegularStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
@@ -56,7 +56,7 @@ class RegularStakesProcessor(MemorialBase):
         self.corner_radius_px = 6 * self.px_per_mm
 
 
-    def process_orders(self, orders, lang_tool_instance_global=None): # Added lang_tool_instance_global
+    def process_orders(self, orders): # Reverted: lang_tool_instance_global parameter removed
         print("[DEBUG] Entered RegularStakesProcessor.process_orders")
         if isinstance(orders, list):
             df = pd.DataFrame(orders)
@@ -176,8 +176,7 @@ class RegularStakesProcessor(MemorialBase):
                 orders_dict = batch_orders.to_dict('records')
                 print(f"Batch {batch_num} first order text fields: line_1={orders_dict[0].get('line_1')}, line_2={orders_dict[0].get('line_2')}, line_3={orders_dict[0].get('line_3')}")
                 self.create_memorial_svg(orders_dict, batch_num)
-                # Pass lang_tool_instance_global to create_batch_csv
-                self.create_batch_csv(orders_dict, batch_num, self.CATEGORY, lang_tool_instance_global)
+                self.create_batch_csv(orders_dict, batch_num, self.CATEGORY) # Reverted: lang_tool_instance_global argument removed
                 batch_num += 1
 
 
@@ -217,8 +216,9 @@ class RegularStakesProcessor(MemorialBase):
             if idx < len(orders):
                 order = orders[idx]
                 print(f"SVG Batch {batch_num}, Cell {idx}: order-id={order.get('order-id')}, sku={order.get('sku')}, line_1={order.get('line_1')}")
-                # Removed call to check_grammar_and_typos for fields ['line_1', 'line_2', 'line_3']
-                # This is now handled by generate_warnings in create_batch_csv
+                # Use shared utility for grammar/typo checks - Restored
+                for field in ['line_1', 'line_2', 'line_3']:
+                    check_grammar_and_typos(order.get(field, ''))
 
                 # --- SKU-specific logic for OM008021 ---
                 # If the SKU is OM008021, always use the special graphic file from the hardcoded path.
@@ -345,77 +345,48 @@ class RegularStakesProcessor(MemorialBase):
         dwg.save()
         return dwg
 
-    def create_batch_csv(self, orders, batch_num, category, lang_tool_instance_global=None): # Added lang_tool_instance_global
+    def create_batch_csv(self, orders, batch_num, category): # Reverted: lang_tool_instance_global parameter removed
         """Create CSV file for the batch with specified category prefix, using a timestamp."""
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S') # Preserved timestamp logic
 
-        # Generate filenames with timestamp
         svg_reference_filename = f"{category}_{timestamp_str}_{batch_num:03d}.svg"
         csv_filename = f"{category}_{timestamp_str}_{batch_num:03d}.csv"
         design_file_ref = f"{category}_{timestamp_str}_{batch_num:03d}"
-
         filepath = os.path.join(self.OUTPUT_DIR, csv_filename)
 
-        # Find all unique keys across all orders (for max flexibility)
         all_keys = set()
-        for order in orders:
+        for order in orders: # orders is a list of dicts
             all_keys.update([k.upper() for k in order.keys()])
 
         preferred_columns = [
             'SVG FILE', 'DESIGN FILE', 'ORDER-ID', 'ORDER-ITEM-ID', 'SKU', 'NUMBER-OF-ITEMS',
             'TYPE', 'COLOUR', 'GRAPHIC', 'LINE_1', 'LINE_2', 'LINE_3', 'THEME', 'WARNINGS'
         ]
-        # Include any other columns present in the orders, case-insensitively
-        extra_columns = [col for col in all_keys if col not in preferred_columns and col not in [c.upper() for c in preferred_columns]]
-        columns = preferred_columns + sorted(list(set(extra_columns)))
-
+        extra_columns = [col for col in all_keys if col.upper() not in [pc.upper() for pc in preferred_columns]]
+        columns = preferred_columns + sorted(list(set(extra_columns))) # Keep consistent column order
 
         data = []
-
-        def process_order_warnings_regular(order_data, lt_tool_to_use):
-            # Helper function to avoid code duplication for warning generation
+        # Removed LanguageTool initialization, try/except, and helper function
+        for order in orders:
             row = {}
             row['SVG FILE'] = svg_reference_filename
             row['DESIGN FILE'] = design_file_ref
+
             for col_header in columns:
                 if col_header in ['SVG FILE', 'DESIGN FILE']:
                     continue
-                val = order_data.get(col_header.lower(), order_data.get(col_header, order_data.get(col_header.upper(), '')))
+                val = order.get(col_header.lower(), order.get(col_header, order.get(col_header.upper(), '')))
                 if col_header == 'NUMBER-OF-ITEMS' and val == '':
-                    val = order_data.get('number-of-items', '')
+                    val = order.get('number-of-items', '')
                 row[col_header] = val
-            row['WARNINGS'] = MemorialBase.generate_warnings(order_data, lt_tool_to_use) # Calls static method from MemorialBase
-            return row
 
-        if lang_tool_instance_global:
-            # Use the provided global instance
-            print(f"Using provided LanguageTool instance for RegularStakes batch {batch_num}.")
-            for order in orders:
-                data.append(process_order_warnings_regular(order, lang_tool_instance_global))
-        else:
-            # Initialize LanguageTool locally for this batch
-            try:
-                with language_tool_python.LanguageTool('en-US') as local_lt_instance:
-                    print(f"LanguageTool initialized locally for RegularStakes batch {batch_num}.")
-                    for order in orders:
-                        data.append(process_order_warnings_regular(order, local_lt_instance))
-            except Exception as e:
-                print(f"WARNING: LanguageTool could not be initialized or used locally in RegularStakesProcessor.create_batch_csv for batch {batch_num}: {e}. Grammar checks will be skipped for this batch.")
-                for order in orders: # Fallback if local LT init fails
-                    data.append(process_order_warnings_regular(order, None))
-            # If LT failed mid-batch (some orders in 'data' might have LT warnings, others won't), (This scenario is less likely with current structure)
-            # For simplicity, if LT init fails, all orders for this batch are processed here without LT.
-            # The 'data' list would be empty if LT init failed.
+            row['WARNINGS'] = MemorialBase.generate_warnings(order) # Reverted: No lang_tool argument
+            data.append(row)
 
-        df = pd.DataFrame(data) # 'data' will be populated either by 'try' or 'except' block
-        # Ensure column order for output, handling missing columns by adding them with empty values if necessary
+        df = pd.DataFrame(data)
         if not df.empty:
-            final_df_columns = []
-        for col in columns:
-            for col in columns:
-                if col in df.columns:
-                    final_df_columns.append(col)
-            df = df[final_df_columns] # Reorder to preferred_columns + extra_columns
+            final_df_columns = [col for col in columns if col in df.columns] # Ensure only existing columns are used
+            df = df[final_df_columns]
 
         df.to_csv(filepath, index=False, encoding="utf-8")
         print(f"Generated CSV: {filepath}")

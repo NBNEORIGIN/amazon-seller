@@ -6,4 +6,3 @@ PyQt5
 pyperclip
 svgwrite
 requests
-language-tool-python~=2.9.4
