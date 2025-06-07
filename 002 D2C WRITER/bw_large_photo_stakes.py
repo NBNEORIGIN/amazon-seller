@@ -59,10 +59,114 @@ class BWLargePhotoStakesProcessor(MemorialBase):
         self.line1_size_pt = 17
         self.line2_size_pt = 25
 
+        # Load OM008016BW path data
+        self.d_clip_ellipse_om008016bw = ""
+        self.d_border_om008016bw = ""
+        try:
+            clip_path_file = os.path.join(os.path.dirname(__file__), '..', 'assets', '002_svg_templates', 'OM008016BW_clip_path.txt')
+            border_path_file = os.path.join(os.path.dirname(__file__), '..', 'assets', '002_svg_templates', 'OM008016BW_border_path.txt')
+            if os.path.exists(clip_path_file):
+                with open(clip_path_file, 'r') as f:
+                    self.d_clip_ellipse_om008016bw = f.read().strip()
+            else:
+                print(f"WARNING: OM008016BW_clip_path.txt not found at {clip_path_file}")
+            if os.path.exists(border_path_file):
+                with open(border_path_file, 'r') as f:
+                    self.d_border_om008016bw = f.read().strip()
+            else:
+                print(f"WARNING: OM008016BW_border_path.txt not found at {border_path_file}")
+        except Exception as e:
+            print(f"ERROR: Could not load OM008016BW path data: {e}")
+
+
     def add_photo_memorial(self, dwg, x, y, order):
-        # Add memorial outline with rounded corners
-        # Use shared SVG utility for memorial outline
-        dwg.add(draw_rounded_rect(
+        is_om008016bw = (str(order.get('sku', '')).strip().upper() == 'OM008016BW')
+
+        if is_om008016bw and self.d_clip_ellipse_om008016bw and self.d_border_om008016bw:
+            # Specific logic for OM008016BW
+            om_slot_group = dwg.g(transform=f"translate({x},{y})") # Slot position in pixels
+
+            clip_path_id = f"omClip_{order.get('order-id', 'default').replace('-', '_').replace('.', '_')}_{int(x)}_{int(y)}"
+
+            # Transform from template analysis (values are in mm)
+            tx_g1_mm = -5.0270797
+            ty_g1_mm = -86.4915987
+            transform_g1_template_units_str = f"translate({tx_g1_mm},{ty_g1_mm})"
+
+            # Create the clipPath definition. Contents are in mm, and will be scaled by the `template_content_group`
+            # when the image (which is also in that group) is rendered.
+            clip_path_def_content_group = dwg.g(transform=f"scale({self.px_per_mm})") # Scale the path to behave as if in pixel space for the clipPath def
+            clip_path_def_content_group.add(dwg.path(d=self.d_clip_ellipse_om008016bw, transform=transform_g1_template_units_str))
+
+            # Ensure dwg.defs exists
+            if dwg.defs is None:
+                dwg.defs = dwg.g() # SVG spec allows g for defs, svgwrite might need proper dwg.defs()
+
+            # Check if clip path with this ID already exists
+            existing_clip_path = dwg.defs.querySelector(f"#{clip_path_id}")
+            if not existing_clip_path:
+                 clip_path_element = dwg.clipPath(id=clip_path_id)
+                 clip_path_element.add(clip_path_def_content_group)
+                 dwg.defs.add(clip_path_element)
+
+
+            # This group scales its children (defined in mm) by px_per_mm.
+            template_content_group = om_slot_group.add(dwg.g(transform=f"scale({self.px_per_mm})"))
+
+            # Floral Border (defined in mm, transformed by mm-based g1)
+            template_content_group.add(dwg.path(d=self.d_border_om008016bw, style="fill:#000000;stroke:none;", transform=transform_g1_template_units_str))
+
+            # Photo Embedding (defined and positioned in mm)
+            photo_path_str = str(order.get('photo_path', ''))
+            if photo_path_str and not pd.isna(photo_path_str):
+                actual_photo_path = photo_path_str
+                if not os.path.isabs(photo_path_str):
+                    actual_photo_path = os.path.join(self.graphics_path, photo_path_str.replace('\\', os.sep))
+
+                if os.path.exists(actual_photo_path):
+                    photo_data = self.embed_image(actual_photo_path)
+                    if photo_data:
+                        img_x_mm = 15.1252413
+                        img_y_mm = 16.4017223
+                        img_width_mm = 67.046234
+                        img_height_mm = 87.148118
+
+                        photo_image = dwg.image(
+                            href=photo_data,
+                            insert=(f"{img_x_mm}mm", f"{img_y_mm}mm"),
+                            size=(f"{img_width_mm}mm", f"{img_height_mm}mm")
+                        )
+                        photo_image.attribs['clip-path'] = f'url(#{clip_path_id})'
+                        template_content_group.add(photo_image)
+                    else:
+                        print(f"Failed to embed photo for OM008016BW: {actual_photo_path}")
+                else:
+                    print(f"Warning: Photo not found for OM008016BW at {actual_photo_path}")
+            else:
+                print(f"Warning: No photo_path provided for OM008016BW, order ID: {order.get('order-id', 'N/A')}")
+
+            # Red Bounding Box (defined in mm)
+            rect_x_mm = 0.05
+            rect_y_mm = 0.05
+            rect_width_mm = 199.90007
+            rect_height_mm = 119.90007
+            rect_ry_mm = 5.9950037
+            rect_stroke_width_mm = 0.0999334
+
+            template_content_group.add(dwg.rect(
+                insert=(f"{rect_x_mm}mm", f"{rect_y_mm}mm"),
+                size=(f"{rect_width_mm}mm", f"{rect_height_mm}mm"),
+                ry=f"{rect_ry_mm}mm",
+                style=f"fill:none;stroke:#ff0000;stroke-width:{rect_stroke_width_mm}mm"
+            ))
+
+            dwg.add(om_slot_group)
+            # Text elements are intentionally omitted for OM008016BW.
+
+        else:
+            # Original logic for other SKUs
+            # Use default pixel dimensions calculated in __init__
+            dwg.add(draw_rounded_rect(
             dwg,
             insert=(x, y),
             size=(self.memorial_width_px, self.memorial_height_px),

@@ -1,0 +1,3 @@
+order-id,sku,type,colour,decorationtype,photo_path,line_1,line_2,line_3,number-of-items,image_path
+OM_TEST_001,OM008016BW,Large Stake,Black,Photo,sample_photo1.jpg,TextForOM,Should Not Appear,For This SKU,1,sample_photo1.jpg
+NON_OM_TEST_002,OTHER_BW_LRG_PHOTO,Large Stake,Black,Photo,sample_photo2.jpg,Regular Line 1,Regular Line 2,Regular Line 3,1,sample_photo2.jpg

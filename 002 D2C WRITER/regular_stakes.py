@@ -4,11 +4,10 @@ from memorial_base import MemorialBase
 import pandas as pd
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos # Restored check_grammar_and_typos
+from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos
 from core.processors.svg_utils import draw_rounded_rect, add_multiline_text
 from datetime import datetime
 from pathlib import Path
-# Removed: import language_tool_python
 
 class RegularStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
@@ -16,13 +15,7 @@ class RegularStakesProcessor(MemorialBase):
         self.CATEGORY = 'regular_stakes' # Updated CATEGORY
         self.grid_cols = 3
         self.grid_rows = 3
-        # self.batch_size = self.grid_cols * self.grid_rows # This is set in process_orders now
-        # It was moved to process_orders in a previous step, but good to ensure it's not duplicated.
-        # Actually, self.batch_size is used by create_memorial_svg to draw empty cells.
-        # It should be (grid_cols * grid_rows) if that's the page layout.
-        # For regular stakes, it's 3x3 = 9.
         self.batch_size = self.grid_cols * self.grid_rows
-
 
         # Conversion factors
         self.px_per_mm = 1 / 0.26458333333
@@ -56,18 +49,12 @@ class RegularStakesProcessor(MemorialBase):
         self.corner_radius_px = 6 * self.px_per_mm
 
 
-    def process_orders(self, orders): # Reverted: lang_tool_instance_global parameter removed
+    def process_orders(self, orders):
         print("[DEBUG] Entered RegularStakesProcessor.process_orders")
         if isinstance(orders, list):
             df = pd.DataFrame(orders)
         else:
             df = orders.copy()
-
-        # Ensure self.batch_size is set if it wasn't in __init__ or needs recalculation
-        if not hasattr(self, 'batch_size') or self.batch_size is None:
-            self.batch_size = self.grid_cols * self.grid_rows
-            print(f"[DEBUG] Set self.batch_size in process_orders: {self.batch_size}")
-
 
         df.columns = [col.lower().strip() for col in df.columns]
         if 'type' in df.columns:
@@ -176,7 +163,7 @@ class RegularStakesProcessor(MemorialBase):
                 orders_dict = batch_orders.to_dict('records')
                 print(f"Batch {batch_num} first order text fields: line_1={orders_dict[0].get('line_1')}, line_2={orders_dict[0].get('line_2')}, line_3={orders_dict[0].get('line_3')}")
                 self.create_memorial_svg(orders_dict, batch_num)
-                self.create_batch_csv(orders_dict, batch_num, self.CATEGORY) # Reverted: lang_tool_instance_global argument removed
+                self.create_batch_csv(orders_dict, batch_num, self.CATEGORY)
                 batch_num += 1
 
 
@@ -185,7 +172,7 @@ class RegularStakesProcessor(MemorialBase):
         if orders:
             print(f"Batch {batch_num} first order text fields: line_1={orders[0].get('line_1')}, line_2={orders[0].get('line_2')}, line_3={orders[0].get('line_3')}")
 
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S') # Added timestamp
         if output_path is None:
             filename = f"{self.CATEGORY}_{timestamp_str}_{batch_num:03d}.svg" # Updated filename
             output_path = os.path.join(self.OUTPUT_DIR, filename)
@@ -216,7 +203,7 @@ class RegularStakesProcessor(MemorialBase):
             if idx < len(orders):
                 order = orders[idx]
                 print(f"SVG Batch {batch_num}, Cell {idx}: order-id={order.get('order-id')}, sku={order.get('sku')}, line_1={order.get('line_1')}")
-                # Use shared utility for grammar/typo checks - Restored
+                # Use shared utility for grammar/typo checks
                 for field in ['line_1', 'line_2', 'line_3']:
                     check_grammar_and_typos(order.get(field, ''))
 
@@ -345,17 +332,19 @@ class RegularStakesProcessor(MemorialBase):
         dwg.save()
         return dwg
 
-    def create_batch_csv(self, orders, batch_num, category): # Reverted: lang_tool_instance_global parameter removed
+    # Overridden create_batch_csv with timestamp logic
+    def create_batch_csv(self, orders, batch_num, category):
         """Create CSV file for the batch with specified category prefix, using a timestamp."""
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S') # Preserved timestamp logic
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
 
         svg_reference_filename = f"{category}_{timestamp_str}_{batch_num:03d}.svg"
         csv_filename = f"{category}_{timestamp_str}_{batch_num:03d}.csv"
         design_file_ref = f"{category}_{timestamp_str}_{batch_num:03d}"
+
         filepath = os.path.join(self.OUTPUT_DIR, csv_filename)
 
         all_keys = set()
-        for order in orders: # orders is a list of dicts
+        for order in orders:
             all_keys.update([k.upper() for k in order.keys()])
 
         preferred_columns = [
@@ -363,10 +352,9 @@ class RegularStakesProcessor(MemorialBase):
             'TYPE', 'COLOUR', 'GRAPHIC', 'LINE_1', 'LINE_2', 'LINE_3', 'THEME', 'WARNINGS'
         ]
         extra_columns = [col for col in all_keys if col.upper() not in [pc.upper() for pc in preferred_columns]]
-        columns = preferred_columns + sorted(list(set(extra_columns))) # Keep consistent column order
+        columns = preferred_columns + sorted(list(set(extra_columns)))
 
         data = []
-        # Removed LanguageTool initialization, try/except, and helper function
         for order in orders:
             row = {}
             row['SVG FILE'] = svg_reference_filename
@@ -380,17 +368,18 @@ class RegularStakesProcessor(MemorialBase):
                     val = order.get('number-of-items', '')
                 row[col_header] = val
 
-            row['WARNINGS'] = MemorialBase.generate_warnings(order) # Reverted: No lang_tool argument
+            row['WARNINGS'] = MemorialBase.generate_warnings(order) # Calls MemorialBase static method (no lang_tool)
             data.append(row)
 
         df = pd.DataFrame(data)
         if not df.empty:
-            final_df_columns = [col for col in columns if col in df.columns] # Ensure only existing columns are used
-            df = df[final_df_columns]
+            # Ensure column order for output, handling missing columns by adding them with empty values if necessary
+            final_df_columns = [col for col in columns if col in df.columns]
+            if final_df_columns: # Ensure final_df_columns is not empty before trying to use it for indexing
+                 df = df[final_df_columns]
 
         df.to_csv(filepath, index=False, encoding="utf-8")
         print(f"Generated CSV: {filepath}")
-
 
     import sys
 
