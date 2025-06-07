@@ -72,7 +72,8 @@ class MemorialBase:
                             warnings.append(f"Capitalization: Consider title case for {key}")
 
                 date_pattern_flexible = r'\b(\d{1,2}[-/]\d{1,2}[-/](\d{2}|\d{4}))\b'
-                for date_match_str, _, year_str in re.findall(date_pattern_flexible, value):
+                # Corrected tuple unpacking: removed the underscore for the non-existent third group
+                for date_match_str, year_str in re.findall(date_pattern_flexible, value):
                     try:
                         normalized_date_str = date_match_str.replace('-', '/')
                         if len(year_str) == 2:
