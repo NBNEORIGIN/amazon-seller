@@ -9,6 +9,7 @@ from pathlib import Path
 import base64
 import mimetypes
 from datetime import datetime
+import language_tool_python # Added import
 
 class MemorialBase:
     def __init__(self, graphics_path, output_dir):
@@ -46,51 +47,98 @@ class MemorialBase:
         self.date_str = datetime.now().strftime('%y%m%d')
 
     @staticmethod
-    def generate_warnings(row):
+    def generate_warnings(row, lang_tool=None): # Added lang_tool parameter
         import re, datetime
         warnings = []
-        # Check for extra spaces before comma/period and missing spaces after
-        for key in ['LINE_1', 'LINE_2', 'LINE_3']:
-            value = row.get(key, "")
-            if value:
+        text_fields_to_check = ['LINE_1', 'LINE_2', 'LINE_3'] # Standardized keys
+
+        # Existing regex checks
+        for key in text_fields_to_check:
+            value = str(row.get(key, "")).strip() # Ensure it's a string and stripped
+            if value: # Only process if there's actual text
                 if re.search(r"\s+[,\.]", value):
-                    warnings.append(f"Extra space before comma/period in {key}")
-                if re.search(r"[a-zA-Z],[a-zA-Z]", value):
-                    warnings.append(f"Missing space after comma in {key}")
-                if "  " in value:
-                    warnings.append(f"Double space in {key}")
-                if re.search(r"\b(\w+) \1\b", value, re.IGNORECASE):
-                    warnings.append(f"Repeated word in {key}")
-                # Check for capitalization (optional, flag if not title case)
-                if value and not value.istitle():
-                    warnings.append(f"Not title case in {key}")
-                # Check for future dates
-                date_pattern = r'(\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b)'
-                for match in re.findall(date_pattern, value):
+                    warnings.append(f"Punctuation: Extra space before comma/period in {key}")
+                if re.search(r"[a-zA-Z],[a-zA-Z]", value) and not re.search(r"\b(?:Mrs|Mr|Ms)\.,[a-zA-Z]", value): # Avoid flagging "Mr.,Smith"
+                    warnings.append(f"Punctuation: Missing space after comma in {key}")
+                if "  " in value: # Double spaces
+                    warnings.append(f"Spacing: Double space found in {key}")
+                if re.search(r"\b(\w+) \1\b", value, re.IGNORECASE): # Repeated words
+                    warnings.append(f"Grammar: Repeated word in {key}")
+
+                # Check for capitalization (optional, flag if not title case for certain lines)
+                # This is a simple check; LanguageTool might provide more nuanced feedback.
+                # Only apply to LINE_1 and LINE_2 as LINE_3 can be more free-form.
+                if key in ['LINE_1', 'LINE_2'] and not value.istitle() and not value.isupper() and not value.islower():
+                    # Check if it's a date range or similar pattern that shouldn't be title case
+                    if not re.match(r"^\d{1,2}\w{2} \w+ \d{4} ?-? ?\d{1,2}\w{2} \w+ \d{4}$", value): # e.g. 1st Jan 2020 - 2nd Feb 2021
+                         # Also check for simple year ranges like "1940 - 2020"
+                        if not re.match(r"^\d{4} ?-? ?\d{4}$", value):
+                            warnings.append(f"Capitalization: Consider title case for {key}")
+
+                # Check for future dates (more robustly)
+                # Matches DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY, MM-DD-YYYY, also with YY
+                date_pattern_flexible = r'\b(\d{1,2}[-/]\d{1,2}[-/](\d{2}|\d{4}))\b'
+                for date_match_str, _, year_str in re.findall(date_pattern_flexible, value):
                     try:
-                        dt = datetime.datetime.strptime(match, "%d/%m/%Y")
+                        # Normalize separators for strptime
+                        normalized_date_str = date_match_str.replace('-', '/')
+                        # Attempt to parse common date formats
+                        if len(year_str) == 2:
+                            parsed_dt = datetime.datetime.strptime(normalized_date_str, "%d/%m/%y")
+                            if parsed_dt.year > datetime.datetime.now().year + 50: # Heuristic for YY: if 2070+ assume 1970
+                                parsed_dt = parsed_dt.replace(year=parsed_dt.year - 100)
+                        else: # len(year_str) == 4
+                            parsed_dt = datetime.datetime.strptime(normalized_date_str, "%d/%m/%Y")
                     except ValueError:
-                        try:
-                            dt = datetime.datetime.strptime(match, "%m/%d/%Y")
+                        try: # Try MM/DD/YY(YY)
+                            if len(year_str) == 2:
+                                parsed_dt = datetime.datetime.strptime(normalized_date_str, "%m/%d/%y")
+                                if parsed_dt.year > datetime.datetime.now().year + 50:
+                                    parsed_dt = parsed_dt.replace(year=parsed_dt.year - 100)
+                            else:
+                                parsed_dt = datetime.datetime.strptime(normalized_date_str, "%m/%d/%Y")
                         except ValueError:
-                            continue
-                    if dt.year > datetime.datetime.now().year:
-                        warnings.append(f"Future year found in {key}: {match}")
+                            continue # Could not parse with common formats
+
+                    if parsed_dt.year > datetime.datetime.now().year :
+                        warnings.append(f"Date: Possible future year {parsed_dt.year} in {key}: '{date_match_str}'")
+
+        # LanguageTool checks
+        if lang_tool:
+            for key in text_fields_to_check:
+                value = str(row.get(key, "")).strip()
+                if value: # Only check if there's text
+                    try:
+                        matches = lang_tool.check(value)
+                        for match in matches:
+                            # Avoid some less critical or potentially noisy rules if needed by checking match.ruleId
+                            # Example: match.ruleId not in ['UPPERCASE_SENTENCE_START', 'SENTENCE_WHITESPACE']
+
+                            # Extract the actual error snippet from the original text being checked ('value')
+                            error_snippet = value[match.offset : match.offset + match.errorLength]
+
+                            # Construct the new warning message string
+                            suggestion_text = match.replacements[0] if match.replacements else ''
+                            warning_msg = f"LT ({match.ruleId} | {match.category}): {match.message} Suggested: '{suggestion_text}'. Found: '[{error_snippet}]'"
+                            warnings.append(warning_msg)
+                    except Exception as e:
+                        warnings.append(f"LT_ERROR: Could not process field {key} with LanguageTool: {e}")
+
         return "; ".join(warnings)
 
+    # Corrected indentation for create_batch_csv, embed_image, wrap_text, add_reference_point
+    # These methods should be at the same indentation level as __init__ and generate_warnings
 
-    def create_batch_csv(self, orders, batch_num, category):
+    def create_batch_csv(self, orders, batch_num, category, lang_tool_instance_global=None): # Added lang_tool_instance_global
         """Create CSV file for the batch with specified category prefix, matching regular_stakes.py logic and including all fields present in input orders."""
         filename = f"{category}_{self.date_str}_{batch_num:03d}.csv"
         filepath = os.path.join(self.OUTPUT_DIR, filename)
 
-        # Find all unique keys across all orders (for max flexibility)
         all_keys = set()
         for order in orders:
             all_keys.update([k.upper() for k in order.keys()])
 
-        # Define preferred/standard order of columns, matching regular_stakes.py
-        svg_filename = f"{category}_{self.date_str}_{batch_num:03d}.svg"
+        svg_filename = f"{category}_{self.date_str}_{batch_num:03d}.svg" # This is the SVG filename used for reference in CSV
         preferred_columns = [
             'SVG FILE', 'DESIGN FILE', 'ORDER-ID', 'ORDER-ITEM-ID', 'SKU', 'NUMBER-OF-ITEMS',
             'TYPE', 'COLOUR', 'GRAPHIC', 'LINE_1', 'LINE_2', 'LINE_3', 'THEME', 'WARNINGS'
@@ -99,24 +147,52 @@ class MemorialBase:
         columns = preferred_columns + extra_columns
 
         data = []
-        for order in orders:
+
+        def process_order_warnings(order_data, lt_tool_to_use):
+            # Helper function to avoid code duplication for warning generation
             row = {}
             row['SVG FILE'] = svg_filename
             row['DESIGN FILE'] = f"{category}_{self.date_str}_{batch_num:03d}"
             for col in columns:
                 if col in ['SVG FILE', 'DESIGN FILE']:
                     continue
-                # Try both upper and lower case keys
-                val = order.get(col, order.get(col.lower(), order.get(col.upper(), '')))
+                val = order_data.get(col, order_data.get(col.lower(), order_data.get(col.upper(), '')))
                 row[col] = val
-            # Add warnings using the static method
-            row['WARNINGS'] = MemorialBase.generate_warnings(order)
-            data.append(row)
+            row['WARNINGS'] = MemorialBase.generate_warnings(order_data, lt_tool_to_use)
+            return row
+
+        if lang_tool_instance_global:
+            # Use the provided global instance
+            print(f"Using provided LanguageTool instance for batch {batch_num} of {category}.")
+            for order in orders:
+                data.append(process_order_warnings(order, lang_tool_instance_global))
+        else:
+            # Initialize LanguageTool locally for this batch
+            try:
+                with language_tool_python.LanguageTool('en-US') as local_lt_instance:
+                    print(f"LanguageTool initialized locally for batch {batch_num} of {category}.")
+                    for order in orders:
+                        data.append(process_order_warnings(order, local_lt_instance))
+            except Exception as e:
+                print(f"WARNING: LanguageTool could not be initialized or used locally in MemorialBase.create_batch_csv for {category} batch {batch_num}: {e}. Grammar checks will be skipped for this batch.")
+                for order in orders: # Fallback if local LT init fails
+                    data.append(process_order_warnings(order, None))
+            # If LT initialized but failed during processing of an order (less likely for LT init issues)
+            # current 'data' list will have orders processed before failure (with LT warnings).
+            # To process remaining orders in the 'orders' list without LT:
+            # This requires knowing how many were successfully processed.
+            # For simplicity, if LT fails, this batch might have mixed warning quality or just skip LT for all.
+            # The current logic processes all orders with None if LT fails at init.
+            # If it fails after some processing, those processed before failure are in `data`.
+            # The loop for `orders` is inside the try block, so if `lang_tool_instance` fails, remaining orders are processed in except.
+            # The code structure for fallback is okay for init failure.
 
         df = pd.DataFrame(data)
-        # Ensure column order for output
-        df = df[columns]
+        if not df.empty: # Ensure columns are reordered only if DataFrame is not empty
+            present_columns = [col for col in columns if col in df.columns] # Ensure we only try to access present columns
+            df = df[present_columns]
         df.to_csv(filepath, index=False, encoding="utf-8")
+
 
     def embed_image(self, image_path):
         print(f"[embed_image] Original image_path: {image_path}")

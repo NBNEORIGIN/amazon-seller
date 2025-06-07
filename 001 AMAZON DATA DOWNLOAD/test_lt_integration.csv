@@ -1,0 +1,5 @@
+order-id,sku,type,colour,decorationtype,graphic,line_1,line_2,line_3,number-of-items
+LT_TEST_REG_001,SKU_LT_REG_G1,Regular Stake,Gold,Graphic,graphic_lt_reg1.png,This is a tst of grammer.,Helo world,Restin Peace 25/12/2077,1
+LT_TEST_REG_002,SKU_LT_REG_G2,Regular Stake,Silver,Graphic,graphic_lt_reg2.png,These are a error.,Correct sentence here.,This is is repeated.,1
+LT_TEST_BW_001,SKU_LT_BW_G1,Regular Stake,Black,Graphic,graphic_lt_bw1.png,Sentence with space before period .,Another Line with CAPitalization issue,No errors expected here.,1
+LT_TEST_BW_002,SKU_LT_BW_G2,Regular Stake,Black,Graphic,graphic_lt_bw2.png,A perfectly correct line.,So is this one.,And this too.,1

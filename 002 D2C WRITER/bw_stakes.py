@@ -25,7 +25,7 @@ class BWStakesProcessor(MemorialBase):
         # x_offset_px and y_offset_px are no longer used for centering;
         # positioning is absolute from bottom-right.
 
-    def process_orders(self, df):
+    def process_orders(self, df, lang_tool_instance_global=None): # Added lang_tool_instance_global
         # Normalize all column names to lowercase and strip
         df.columns = [col.lower().strip() for col in df.columns]
         if 'type' in df.columns:
@@ -77,7 +77,8 @@ class BWStakesProcessor(MemorialBase):
             if not batch_orders.empty:
                 print(f"\nProcessing B&W batch {batch_num}...")
                 self.create_memorial_svg(batch_orders.to_dict('records'), batch_num)
-                self.create_batch_csv(batch_orders.to_dict('records'), batch_num, self.CATEGORY)
+                # Pass lang_tool_instance_global to create_batch_csv
+                self.create_batch_csv(batch_orders.to_dict('records'), batch_num, self.CATEGORY, lang_tool_instance_global)
                 batch_num += 1
 
     def create_memorial_svg(self, orders, batch_num):
