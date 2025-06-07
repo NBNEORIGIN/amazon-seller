@@ -117,7 +117,7 @@ class ColouredLargePhotoStakesProcessor(ProcessorBase):
         image_path = str(order_data_lower.get('image_path', '')).strip() # Check for image_path
 
         # Specific for Coloured Large Photo Stakes
-        is_correct_type = (type_ == 'large stake')
+        is_correct_type = type_ in ['large stake', 'large plaque']
 
         allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble'] # Coloured, non-black/slate
         is_correct_colour = colour in allowed_colours
@@ -171,7 +171,7 @@ class ColouredLargePhotoStakesProcessor(ProcessorBase):
                 orders_dict_list = batch_df.to_dict('records')
                 page_filename = f"{self.CATEGORY}_batch_{self.date_str}_{batch_num:03d}.svg"
 
-                self._create_memorial_page_svg(orders_dict_list, batch_num, page_filename)
+                self._create_memorial_page_svg(orders_dict_list, page_filename)
 
                 self.text_utils.create_batch_csv(
                     orders_dict_list, batch_num, self.CATEGORY,
