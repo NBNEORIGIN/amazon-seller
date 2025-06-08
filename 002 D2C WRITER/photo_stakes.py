@@ -277,7 +277,7 @@ class PhotoStakesProcessor(MemorialBase):
             print('[DEBUG] image_path values for all rows:')
             print(df[['order-id', 'image_path']])
             eligible = df[
-                (df['type'] == 'regular stake') &
+                (df['type'].isin(['regular stake', 'regular plaque'])) & # MODIFIED HERE
                 (df['colour'].isin(allowed_colours)) &
                 (
                     (df['graphic'].str.lower() == 'photo') |
