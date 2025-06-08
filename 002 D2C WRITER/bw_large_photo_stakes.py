@@ -80,6 +80,16 @@ class BWLargePhotoStakesProcessor(MemorialBase):
 
 
     def add_photo_memorial(self, dwg, x, y, order):
+        # Determine if this is an attention order
+        is_attention_order = False
+        order_colour_lower = str(order.get('colour', '')).lower()
+        order_type_lower = str(order.get('type', '')).lower()
+
+        if order_colour_lower in ['marble', 'stone']:
+            is_attention_order = True
+        if order_type_lower == 'large plaque' or order_type_lower == 'regular plaque':
+            is_attention_order = True
+
         is_om008016bw = (str(order.get('sku', '')).strip().upper() == 'OM008016BW')
 
         if is_om008016bw and self.d_clip_ellipse_om008016bw and self.d_border_om008016bw:
@@ -153,11 +163,13 @@ class BWLargePhotoStakesProcessor(MemorialBase):
             rect_ry_mm = 5.9950037
             rect_stroke_width_mm = 0.0999334
 
+            om_stroke_color = 'yellow' if is_attention_order else '#ff0000' # Default red for OM template
+
             template_content_group.add(dwg.rect(
                 insert=(f"{rect_x_mm}mm", f"{rect_y_mm}mm"),
                 size=(f"{rect_width_mm}mm", f"{rect_height_mm}mm"),
                 ry=f"{rect_ry_mm}mm",
-                style=f"fill:none;stroke:#ff0000;stroke-width:{rect_stroke_width_mm}mm"
+                style=f"fill:none;stroke:{om_stroke_color};stroke-width:{rect_stroke_width_mm}mm" # Use conditional stroke
             ))
 
             dwg.add(om_slot_group)
@@ -165,119 +177,125 @@ class BWLargePhotoStakesProcessor(MemorialBase):
 
         else:
             # Original logic for other SKUs
-            # Use default pixel dimensions calculated in __init__
+            default_other_stroke_color = 'yellow' if is_attention_order else 'black'
+
             dwg.add(draw_rounded_rect(
             dwg,
             insert=(x, y),
-            size=(self.memorial_width_px, self.memorial_height_px),
-            rx=self.corner_radius_px,
-            ry=self.corner_radius_px,
+            size=(self.memorial_width_px_default, self.memorial_height_px_default),
+            rx=self.corner_radius_px_default,
+            ry=self.corner_radius_px_default,
             fill='none',
-            stroke='black',
+            stroke=default_other_stroke_color, # MODIFIED HERE
             stroke_width=1
-        ))
-        
-        # Add photo frame
-        frame_x = x + self.photo_left_margin_px
-        frame_y = y + (self.memorial_height_px - self.photo_height_px) / 2
-        
-        # Calculate center position for the clipping rectangle
-        clip_x = frame_x + (self.photo_width_px - self.photo_clip_width_px) / 2
-        clip_y = frame_y + (self.photo_height_px - self.photo_clip_height_px) / 2
-        
-        # Calculate text area center for the blue outline
-        text_x = frame_x + self.photo_width_px + self.text_right_shift_px
-        text_area_width = self.memorial_width_px - (text_x - x) - self.text_right_shift_px
-        text_center_x = text_x + text_area_width / 2 - (self.photo_clip_width_px / 2)
-        text_center_y = y + (28 * self.px_per_mm)  # Align with line 1
-        
-        # Add black background rectangle for photo visibility
-        # Use shared SVG utility for black background rectangle for photo
-        dwg.add(draw_rounded_rect(
-            dwg,
-            insert=(clip_x, clip_y),
-            size=(self.photo_clip_width_px, self.photo_clip_height_px),
-            rx=self.photo_corner_radius_px,
-            ry=self.photo_corner_radius_px,
-            fill='black',
-            stroke='none',
-            stroke_width=0
-        ))
-        
-        # Add clipping rectangle with same dimensions
-        clip_rect = dwg.rect(
-            insert=(clip_x, clip_y),
-            size=(self.photo_clip_width_px, self.photo_clip_height_px),
-            rx=self.photo_corner_radius_px,
-            ry=self.photo_corner_radius_px,
-            fill='none',
-            stroke='none'
-        )
-        
-        # Add clipping path using the rectangle
-        clip_path = dwg.defs.add(dwg.clipPath(id=f'clip_{x}_{y}'))
-        clip_path.add(clip_rect)
-        
-        # Add blue outlined rectangle centered over text
-        dwg.add(dwg.rect(
-            insert=(text_center_x, text_center_y),
-            size=(self.photo_clip_width_px, self.photo_clip_height_px),
-            rx=self.photo_corner_radius_px,
-            ry=self.photo_corner_radius_px,
-            fill='none',
-            stroke='blue',
-            stroke_width=self.photo_outline_stroke_px
-        ))
-        
-        # Add photo border with thick stroke
-        dwg.add(dwg.rect(
-            insert=(frame_x, frame_y),
-            size=(self.photo_width_px, self.photo_height_px),
-            rx=self.photo_corner_radius_px,
-            ry=self.photo_corner_radius_px,
-            fill='none',
-            stroke='black',
-            stroke_width=self.photo_border_stroke_px
-        ))
-        
-        # Add photo if path exists
-        if not pd.isna(order['photo_path']):
-            # Handle both absolute and relative paths
-            photo_path = order['photo_path']
-            if not os.path.isabs(photo_path):
-                # If path is relative, join with graphics_path
-                photo_path = os.path.join(self.graphics_path, photo_path.replace('\\', os.sep))
+            ))
+
+            # Use original logic dimension variables (e.g., _orig)
+            frame_x = x + self.photo_left_margin_px_orig
+            frame_y = y + (self.memorial_height_px_default - self.photo_height_px_orig) / 2
+
+            clip_x = frame_x + (self.photo_width_px_orig - self.photo_clip_width_px_orig) / 2
+            clip_y = frame_y + (self.photo_height_px_orig - self.photo_clip_height_px_orig) / 2
             
-            print(f"Looking for photo: {photo_path}")
-            if os.path.exists(photo_path):
-                print(f"Found photo: {photo_path}")
-                photo_data = self.embed_image(photo_path)
-                if photo_data:
-                    print(f"Successfully embedded photo")
-                    photo = dwg.image(
-                        href=photo_data,
-                        insert=(frame_x, frame_y),
-                        size=(self.photo_width_px, self.photo_height_px),
-                        clip_path=f'url(#clip_{x}_{y})'
-                    )
-                    dwg.add(photo)
+            # Text area calculations based on original logic dimensions
+            text_x_calc = frame_x + self.photo_width_px_orig + self.text_right_shift_px_orig
+            # text_area_width_calc = self.memorial_width_px_default - (text_x_calc - x) - self.text_right_shift_px_orig
+            # text_center_x_calc = text_x_calc + text_area_width_calc / 2 - (self.photo_clip_width_px_orig / 2)
+            # text_center_y_calc = y + (28 * self.px_per_mm)
+
+            dwg.add(draw_rounded_rect(
+                dwg,
+                insert=(clip_x, clip_y),
+                size=(self.photo_clip_width_px_orig, self.photo_clip_height_px_orig),
+                rx=self.photo_corner_radius_px_orig,
+                ry=self.photo_corner_radius_px_orig,
+                fill='black',
+                stroke='none',
+                stroke_width=0
+            ))
+
+            clip_rect = dwg.rect(
+                insert=(clip_x, clip_y),
+                size=(self.photo_clip_width_px_orig, self.photo_clip_height_px_orig),
+                rx=self.photo_corner_radius_px_orig,
+                ry=self.photo_corner_radius_px_orig,
+                fill='none',
+                stroke='none'
+            )
+
+            # Ensure dwg.defs exists for general case too
+            if dwg.defs is None: # Should have been created by OM008016BW logic if it ran first, but good check
+                dwg.defs = dwg.g()
+
+            existing_clip_path_orig = dwg.defs.querySelector(f"#clip_{x}_{y}") # Use the same ID style as before
+            if not existing_clip_path_orig: # Check to prevent duplicate IDs
+                clip_path = dwg.defs.add(dwg.clipPath(id=f'clip_{x}_{y}'))
+                clip_path.add(clip_rect)
+
+            # Blue outlined rectangle for text area (original logic)
+            # This was commented out in the previous full overwrite, re-evaluating if needed.
+            # For now, let's keep it commented as it was related to text which is not primary for OM SKU.
+            # If it's for visual debugging of text area for normal photo stakes, it can be added back.
+            # text_x_for_blue_rect = frame_x + self.photo_width_px_orig + self.text_right_shift_px_orig
+            # text_area_width_for_blue_rect = self.memorial_width_px_default - (text_x_for_blue_rect - x) - self.text_right_shift_px_orig
+            # text_center_x_for_blue_rect = text_x_for_blue_rect + text_area_width_for_blue_rect / 2 - (self.photo_clip_width_px_orig / 2)
+            # text_center_y_for_blue_rect = y + (28 * self.px_per_mm)
+            # dwg.add(dwg.rect(
+            #     insert=(text_center_x_for_blue_rect, text_center_y_for_blue_rect), # These are pixel values
+            #     size=(self.photo_clip_width_px_orig, self.photo_clip_height_px_orig),
+            #     rx=self.photo_corner_radius_px_orig,
+            #     ry=self.photo_corner_radius_px_orig,
+            #     fill='none',
+            #     stroke='blue',
+            #     stroke_width=self.photo_outline_stroke_px_orig
+            # ))
+
+            dwg.add(dwg.rect(
+                insert=(frame_x, frame_y),
+                size=(self.photo_width_px_orig, self.photo_height_px_orig),
+                rx=self.photo_corner_radius_px_orig,
+                ry=self.photo_corner_radius_px_orig,
+                fill='none',
+                stroke='black', # This is the photo border, not the main slot outline
+                stroke_width=self.photo_border_stroke_px_orig
+            ))
+
+            photo_path_str = str(order.get('photo_path', '')) # Ensure string
+            if photo_path_str and not pd.isna(photo_path_str): # Check not empty and not NaN
+                actual_photo_path = photo_path_str
+                if not os.path.isabs(photo_path_str):
+                    actual_photo_path = os.path.join(self.graphics_path, photo_path_str.replace('\\', os.sep))
+
+                if os.path.exists(actual_photo_path):
+                    photo_data = self.embed_image(actual_photo_path)
+                    if photo_data:
+                        photo = dwg.image(
+                            href=photo_data,
+                            insert=(frame_x, frame_y),
+                            size=(self.photo_width_px_orig, self.photo_height_px_orig),
+                            clip_path=f'url(#clip_{x}_{y})'
+                        )
+                        dwg.add(photo)
+                    else:
+                        print(f"Failed to embed photo for SKU {order.get('sku')}")
                 else:
-                    print(f"Failed to embed photo")
+                    print(f"Warning: Photo not found at {actual_photo_path} for SKU {order.get('sku')}")
             else:
-                print(f"Warning: Photo not found at {photo_path}")
+                print(f"Warning: No photo_path for SKU {order.get('sku')}")
         
-        # Add text elements
-        text_x = frame_x + self.photo_width_px + self.text_right_shift_px
-        text_area_width = self.memorial_width_px - (text_x - x) - self.text_right_shift_px
-        text_center_x = text_x + text_area_width / 2
-        
-        pt_to_mm = 0.352778
-        if not pd.isna(order['line_1']):
-            line1_y = y + (28 * self.px_per_mm)
-            lines = split_line_to_fit(str(order['line_1']), 30)
-            for idx, line in enumerate(lines):
-                dy = 0 if idx == 0 else self.line1_size_pt * pt_to_mm * 1.3
-                dwg.add(add_multiline_text(
+            # Add text elements using original logic dimension variables
+            text_x_final = frame_x + self.photo_width_px_orig + self.text_right_shift_px_orig
+            text_area_width_final = self.memorial_width_px_default - (text_x_final - x) - self.text_right_shift_px_orig
+            text_center_x_final = text_x_final + text_area_width_final / 2
+
+            pt_to_px = self.pt_to_mm * self.px_per_mm
+
+            if not pd.isna(order.get('line_1')):
+                line1_y_px = y + (28 * self.px_per_mm)
+                lines = split_line_to_fit(str(order['line_1']), 30)
+                for i, line_text in enumerate(lines): # Changed idx to i to avoid conflict
+                    dy_px = i * (self.line1_size_pt * pt_to_px * 1.3)
+                    dwg.add(add_multiline_text(
                     dwg,
                     [line],
                     insert=(text_center_x, line1_y + dy),

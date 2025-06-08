@@ -110,15 +110,31 @@ class BWStakesProcessor(MemorialBase):
             else: # Should not happen due to "if idx >= 3: break"
                 continue
 
+            default_slot_stroke_color = 'red'
+            slot_stroke_color = default_slot_stroke_color
+            is_attention_order = False
+
+            order_colour_lower = str(order.get('colour', '')).lower()
+            order_type_lower = str(order.get('type', '')).lower()
+
+            if order_colour_lower in ['marble', 'stone']:
+                is_attention_order = True
+
+            if order_type_lower == 'regular plaque':
+                is_attention_order = True
+
+            if is_attention_order:
+                slot_stroke_color = 'yellow'
+
             # Add memorial outline
             dwg.add(dwg.rect(
                 insert=(x, y),
                 size=(self.memorial_width_px, self.memorial_height_px),
-                rx=6*self.px_per_mm,
-                ry=6*self.px_per_mm,
+                rx=6*self.px_per_mm, # Kept from existing code
+                ry=6*self.px_per_mm, # Kept from existing code
                 fill='none',
-                stroke='red',
-                stroke_width=0.1*self.px_per_mm
+                stroke=slot_stroke_color, # MODIFIED HERE
+                stroke_width=0.1*self.px_per_mm # Kept from existing code
             ))
             
             # Add graphic if exists

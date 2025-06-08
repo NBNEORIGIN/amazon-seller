@@ -12,7 +12,7 @@ from pathlib import Path
 class RegularStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
         super().__init__(graphics_path, output_dir)
-        self.CATEGORY = 'regular_stakes' # Updated CATEGORY
+        self.CATEGORY = 'COLOUR'
         self.grid_cols = 3
         self.grid_rows = 3
         self.batch_size = self.grid_cols * self.grid_rows
@@ -171,10 +171,8 @@ class RegularStakesProcessor(MemorialBase):
     def create_memorial_svg(self, orders, batch_num, output_path=None):
         if orders:
             print(f"Batch {batch_num} first order text fields: line_1={orders[0].get('line_1')}, line_2={orders[0].get('line_2')}, line_3={orders[0].get('line_3')}")
-
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S') # Added timestamp
         if output_path is None:
-            filename = f"{self.CATEGORY}_{timestamp_str}_{batch_num:03d}.svg" # Updated filename
+            filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
             output_path = os.path.join(self.OUTPUT_DIR, filename)
 
         dwg = svgwrite.Drawing(
@@ -331,55 +329,6 @@ class RegularStakesProcessor(MemorialBase):
 
         dwg.save()
         return dwg
-
-    # Overridden create_batch_csv with timestamp logic
-    def create_batch_csv(self, orders, batch_num, category):
-        """Create CSV file for the batch with specified category prefix, using a timestamp."""
-        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-        svg_reference_filename = f"{category}_{timestamp_str}_{batch_num:03d}.svg"
-        csv_filename = f"{category}_{timestamp_str}_{batch_num:03d}.csv"
-        design_file_ref = f"{category}_{timestamp_str}_{batch_num:03d}"
-
-        filepath = os.path.join(self.OUTPUT_DIR, csv_filename)
-
-        all_keys = set()
-        for order in orders:
-            all_keys.update([k.upper() for k in order.keys()])
-
-        preferred_columns = [
-            'SVG FILE', 'DESIGN FILE', 'ORDER-ID', 'ORDER-ITEM-ID', 'SKU', 'NUMBER-OF-ITEMS',
-            'TYPE', 'COLOUR', 'GRAPHIC', 'LINE_1', 'LINE_2', 'LINE_3', 'THEME', 'WARNINGS'
-        ]
-        extra_columns = [col for col in all_keys if col.upper() not in [pc.upper() for pc in preferred_columns]]
-        columns = preferred_columns + sorted(list(set(extra_columns)))
-
-        data = []
-        for order in orders:
-            row = {}
-            row['SVG FILE'] = svg_reference_filename
-            row['DESIGN FILE'] = design_file_ref
-
-            for col_header in columns:
-                if col_header in ['SVG FILE', 'DESIGN FILE']:
-                    continue
-                val = order.get(col_header.lower(), order.get(col_header, order.get(col_header.upper(), '')))
-                if col_header == 'NUMBER-OF-ITEMS' and val == '':
-                    val = order.get('number-of-items', '')
-                row[col_header] = val
-
-            row['WARNINGS'] = MemorialBase.generate_warnings(order) # Calls MemorialBase static method (no lang_tool)
-            data.append(row)
-
-        df = pd.DataFrame(data)
-        if not df.empty:
-            # Ensure column order for output, handling missing columns by adding them with empty values if necessary
-            final_df_columns = [col for col in columns if col in df.columns]
-            if final_df_columns: # Ensure final_df_columns is not empty before trying to use it for indexing
-                 df = df[final_df_columns]
-
-        df.to_csv(filepath, index=False, encoding="utf-8")
-        print(f"Generated CSV: {filepath}")
 
     import sys
 

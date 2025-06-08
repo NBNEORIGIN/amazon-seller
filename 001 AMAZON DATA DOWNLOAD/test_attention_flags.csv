@@ -1,0 +1,17 @@
+order-id,sku,type,colour,decorationtype,graphic,line_1,line_2,line_3,number-of-items,image_path
+ATTN_REG_001,SKU_MARBLE_STAKE,Regular Stake,Marble,Graphic,marble_graphic.png,Marble Stake,Line2,,1,
+ATTN_REG_002,SKU_STONE_STAKE,Regular Stake,Stone,Graphic,stone_graphic.png,Stone Stake,Line2,,1,
+ATTN_REG_003,SKU_SILVER_PLAQUE,Regular Plaque,Silver,Graphic,plaque_graphic.png,Silver Plaque,Line2,,1,
+ATTN_REG_004,SKU_MARBLE_PLAQUE,Regular Plaque,Marble,Graphic,marble_plaque.png,Marble Plaque,Line2,,1,
+NORM_REG_005,SKU_GOLD_STAKE,Regular Stake,Gold,Graphic,gold_graphic.png,Gold Stake,Line2,,1,
+ATTN_BW_001,SKU_BW_PLAQUE,Regular Plaque,Black,Graphic,bw_plaque_graphic.png,BW Plaque,Line2,,1,
+NORM_BW_002,SKU_BW_STAKE,Regular Stake,Black,Graphic,bw_stake_graphic.png,BW Stake,Line2,,1,
+ATTN_BLS_001,SKU_BLS_STONE_PLAQUE,Large Plaque,Stone,Graphic,bls_stone_pl.png,BW Large Stone Plaque,Line2,,1,
+NORM_BLS_002,SKU_BLS_BLACK_STAKE,Large Stake,Black,Graphic,bls_black_st.png,BW Large Stake,Line2,,1,
+ATTN_PHOTO_001,SKU_PHOTO_PLAQUE,Regular Plaque,Silver,Photo,images/photo_plaque.jpg,Photo Plaque,Line2,,1,images/photo_plaque.jpg
+NORM_PHOTO_002,SKU_PHOTO_STAKE,Regular Stake,Silver,Photo,images/photo_stake.jpg,Photo Stake,Line2,,1,images/photo_stake.jpg
+ATTN_BWP_001,SKU_BWP_PLAQUE,Large Plaque,Black,Photo,images/bw_lg_pl_photo.jpg,BW Large Plaque Photo,Line2,,1,images/bw_lg_pl_photo.jpg
+NORM_BWP_002,SKU_BWP_STAKE,Large Stake,Black,Photo,images/bw_lg_st_photo.jpg,BW Large Stake Photo,Line2,,1,images/bw_lg_st_photo.jpg
+ATTN_CLS_001,SKU_CLS_MARBLE,Large Stake,Marble,Graphic,cls_marble.png,Coloured Large Marble,Line2,,1,
+ATTN_CLS_002,SKU_CLS_STONE_PLAQUE,Large Plaque,Stone,Graphic,cls_stone_pl.png,Coloured Large Stone Plaque,Line2,,1,
+NORM_CLS_003,SKU_CLS_GOLD,Large Stake,Gold,Graphic,cls_gold.png,Coloured Large Gold,Line2,,1,

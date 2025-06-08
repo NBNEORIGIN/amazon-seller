@@ -88,8 +88,27 @@ class ColouredLargeStakesProcessor(MemorialBase):
         print(f"SVG file saved successfully")
 
     def add_memorial(self, dwg, x, y, order):
+        default_slot_stroke_color = 'red' # Current default
+        slot_stroke_color = default_slot_stroke_color
+        is_attention_order = False
+
+        # Handle potential case variations for keys from order dictionary
+        order_colour_val = order.get('COLOUR', order.get('colour', ''))
+        order_type_val = order.get('TYPE', order.get('type', ''))
+
+        order_colour_lower = str(order_colour_val).lower()
+        order_type_lower = str(order_type_val).lower()
+
+        if order_colour_lower in ['marble', 'stone']:
+            is_attention_order = True
+
+        if order_type_lower == 'large plaque' or order_type_lower == 'regular plaque':
+            is_attention_order = True
+
+        if is_attention_order:
+            slot_stroke_color = 'yellow'
+
         # Draw rounded rectangle for the memorial
-        # Use shared SVG utility for rounded rectangle
         dwg.add(draw_rounded_rect(
             dwg,
             insert=(x, y),
@@ -97,7 +116,7 @@ class ColouredLargeStakesProcessor(MemorialBase):
             rx=self.corner_radius_px,
             ry=self.corner_radius_px,
             fill='white',  # Could be changed based on COLOUR
-            stroke='red',
+            stroke=slot_stroke_color, # MODIFIED HERE
             stroke_width=self.stroke_width
         ))
         # --- Embed graphic if present (logic from RegularStakesProcessor) ---

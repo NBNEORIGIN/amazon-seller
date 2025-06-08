@@ -40,7 +40,29 @@ class BWLargeStakesProcessor(MemorialBase):
         # Old x_offset_px, y_offset_px, memorial_spacing_x_px are removed as placement is absolute bottom-right
 
     def add_memorial(self, dwg, x, y, order):
-        # Create the memorial rectangle (red cut line)
+        default_slot_stroke_color = '#ff0000' # Current default
+        slot_stroke_color = default_slot_stroke_color
+        is_attention_order = False
+
+        order_colour_lower = str(order.get('colour', '')).lower()
+        order_type_lower = str(order.get('type', '')).lower()
+
+        if order_colour_lower in ['marble', 'stone']:
+            is_attention_order = True
+
+        # This processor filters for 'large stake'.
+        # If 'large plaque' is a distinct type that needs highlighting:
+        if order_type_lower == 'large plaque':
+            is_attention_order = True
+        # 'regular plaque' is unlikely to appear here due to 'large stake' filtering,
+        # but included for consistency if data or filtering changes.
+        elif order_type_lower == 'regular plaque':
+            is_attention_order = True
+
+        if is_attention_order:
+            slot_stroke_color = 'yellow'
+
+        # Create the memorial rectangle (red or yellow cut line)
         # x, y are the top-left corner of the memorial block
         rect = dwg.rect(
             insert=(x, y),
@@ -48,8 +70,8 @@ class BWLargeStakesProcessor(MemorialBase):
             rx=self.corner_radius_px,
             ry=self.corner_radius_px,
             fill='none',
-            stroke='#ff0000', # Red stroke for cut line
-            stroke_width=self.stroke_width_px # Use new stroke_width_px
+            stroke=slot_stroke_color, # MODIFIED HERE
+            stroke_width=self.stroke_width_px
         )
         dwg.add(rect)
 

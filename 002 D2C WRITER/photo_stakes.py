@@ -225,13 +225,30 @@ class PhotoStakesProcessor(MemorialBase):
                 col = idx
                 x = self.x_offset_px + (col * self.memorial_width_px)
                 y = self.y_offset_px + (row * self.memorial_height_px)
+
+                default_slot_stroke_color = 'red'
+                slot_stroke_color = default_slot_stroke_color
+                is_attention_order = False
+
+                order_colour_lower = str(order_dict.get('colour', '')).lower()
+                order_type_lower = str(order_dict.get('type', '')).lower()
+
+                if order_colour_lower in ['marble', 'stone']:
+                    is_attention_order = True
+
+                if order_type_lower == 'regular plaque':
+                    is_attention_order = True
+
+                if is_attention_order:
+                    slot_stroke_color = 'yellow'
+
                 dwg.add(dwg.rect(
                     insert=(x, y),
                     size=(self.memorial_width_px, self.memorial_height_px),
                     rx=6*self.px_per_mm,
                     ry=6*self.px_per_mm,
                     fill='none',
-                    stroke='red',
+                    stroke=slot_stroke_color, # MODIFIED HERE
                     stroke_width=0.1*self.px_per_mm
                 ))
                 self.add_photo_memorial(dwg, x, y, order_dict)

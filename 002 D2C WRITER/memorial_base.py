@@ -9,7 +9,6 @@ from pathlib import Path
 import base64
 import mimetypes
 from datetime import datetime
-# Removed: import language_tool_python
 
 class MemorialBase:
     def __init__(self, graphics_path, output_dir):
@@ -47,71 +46,50 @@ class MemorialBase:
         self.date_str = datetime.now().strftime('%y%m%d')
 
     @staticmethod
-    def generate_warnings(row): # Reverted: lang_tool parameter removed
+    def generate_warnings(row):
         import re, datetime
         warnings = []
-        # Standardized keys for text fields (original or similar logic)
-        text_fields_to_check = ['LINE_1', 'LINE_2', 'LINE_3']
-
-        # Existing regex checks (should be similar to the original pre-LT version)
-        for key in text_fields_to_check:
-            value = str(row.get(key, "")).strip()
+        # Check for extra spaces before comma/period and missing spaces after
+        for key in ['LINE_1', 'LINE_2', 'LINE_3']:
+            value = row.get(key, "")
             if value:
                 if re.search(r"\s+[,\.]", value):
-                    warnings.append(f"Punctuation: Extra space before comma/period in {key}")
-                if re.search(r"[a-zA-Z],[a-zA-Z]", value) and not re.search(r"\b(?:Mrs|Mr|Ms)\.,[a-zA-Z]", value):
-                    warnings.append(f"Punctuation: Missing space after comma in {key}")
+                    warnings.append(f"Extra space before comma/period in {key}")
+                if re.search(r"[a-zA-Z],[a-zA-Z]", value):
+                    warnings.append(f"Missing space after comma in {key}")
                 if "  " in value:
-                    warnings.append(f"Spacing: Double space found in {key}")
+                    warnings.append(f"Double space in {key}")
                 if re.search(r"\b(\w+) \1\b", value, re.IGNORECASE):
-                    warnings.append(f"Grammar: Repeated word in {key}")
-
-                if key in ['LINE_1', 'LINE_2'] and not value.istitle() and not value.isupper() and not value.islower():
-                    if not re.match(r"^\d{1,2}\w{2} \w+ \d{4} ?-? ?\d{1,2}\w{2} \w+ \d{4}$", value):
-                        if not re.match(r"^\d{4} ?-? ?\d{4}$", value):
-                            warnings.append(f"Capitalization: Consider title case for {key}")
-
-                date_pattern_flexible = r'\b(\d{1,2}[-/]\d{1,2}[-/](\d{2}|\d{4}))\b'
-                # Corrected tuple unpacking: removed the underscore for the non-existent third group
-                for date_match_str, year_str in re.findall(date_pattern_flexible, value):
+                    warnings.append(f"Repeated word in {key}")
+                # Check for capitalization (optional, flag if not title case)
+                if value and not value.istitle():
+                    warnings.append(f"Not title case in {key}")
+                # Check for future dates
+                date_pattern = r'(\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b)'
+                for match in re.findall(date_pattern, value):
                     try:
-                        normalized_date_str = date_match_str.replace('-', '/')
-                        if len(year_str) == 2:
-                            parsed_dt = datetime.datetime.strptime(normalized_date_str, "%d/%m/%y")
-                            if parsed_dt.year > datetime.datetime.now().year + 50:
-                                parsed_dt = parsed_dt.replace(year=parsed_dt.year - 100)
-                        else:
-                            parsed_dt = datetime.datetime.strptime(normalized_date_str, "%d/%m/%Y")
+                        dt = datetime.datetime.strptime(match, "%d/%m/%Y")
                     except ValueError:
                         try:
-                            if len(year_str) == 2:
-                                parsed_dt = datetime.datetime.strptime(normalized_date_str, "%m/%d/%y")
-                                if parsed_dt.year > datetime.datetime.now().year + 50:
-                                    parsed_dt = parsed_dt.replace(year=parsed_dt.year - 100)
-                            else:
-                                parsed_dt = datetime.datetime.strptime(normalized_date_str, "%m/%d/%Y")
+                            dt = datetime.datetime.strptime(match, "%m/%d/%Y")
                         except ValueError:
                             continue
-
-                    if parsed_dt.year > datetime.datetime.now().year :
-                        warnings.append(f"Date: Possible future year {parsed_dt.year} in {key}: '{date_match_str}'")
-
-        # Removed LanguageTool checks section entirely
-
+                    if dt.year > datetime.datetime.now().year:
+                        warnings.append(f"Future year found in {key}: {match}")
         return "; ".join(warnings)
 
-    # Corrected indentation for create_batch_csv, embed_image, wrap_text, add_reference_point
-    # These methods should be at the same indentation level as __init__ and generate_warnings
 
-    def create_batch_csv(self, orders, batch_num, category): # Reverted: lang_tool_instance_global parameter removed
+    def create_batch_csv(self, orders, batch_num, category):
         """Create CSV file for the batch with specified category prefix, matching regular_stakes.py logic and including all fields present in input orders."""
         filename = f"{category}_{self.date_str}_{batch_num:03d}.csv"
         filepath = os.path.join(self.OUTPUT_DIR, filename)
 
+        # Find all unique keys across all orders (for max flexibility)
         all_keys = set()
         for order in orders:
             all_keys.update([k.upper() for k in order.keys()])
 
+        # Define preferred/standard order of columns, matching regular_stakes.py
         svg_filename = f"{category}_{self.date_str}_{batch_num:03d}.svg"
         preferred_columns = [
             'SVG FILE', 'DESIGN FILE', 'ORDER-ID', 'ORDER-ITEM-ID', 'SKU', 'NUMBER-OF-ITEMS',
@@ -121,26 +99,24 @@ class MemorialBase:
         columns = preferred_columns + extra_columns
 
         data = []
-        # Removed LanguageTool initialization and try/except block
-        # Removed process_order_warnings helper function
         for order in orders:
             row = {}
             row['SVG FILE'] = svg_filename
             row['DESIGN FILE'] = f"{category}_{self.date_str}_{batch_num:03d}"
-            for col in columns: # Corrected variable name from col_name_in_loop to col
+            for col in columns:
                 if col in ['SVG FILE', 'DESIGN FILE']:
                     continue
+                # Try both upper and lower case keys
                 val = order.get(col, order.get(col.lower(), order.get(col.upper(), '')))
                 row[col] = val
-            row['WARNINGS'] = MemorialBase.generate_warnings(order) # Reverted call
+            # Add warnings using the static method
+            row['WARNINGS'] = MemorialBase.generate_warnings(order)
             data.append(row)
 
         df = pd.DataFrame(data)
-        if not df.empty:
-            present_columns = [col for col in columns if col in df.columns]
-            df = df[present_columns]
+        # Ensure column order for output
+        df = df[columns]
         df.to_csv(filepath, index=False, encoding="utf-8")
-
 
     def embed_image(self, image_path):
         print(f"[embed_image] Original image_path: {image_path}")
