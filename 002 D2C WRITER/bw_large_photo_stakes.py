@@ -98,110 +98,73 @@ class BWLargePhotoStakesProcessor(MemorialBase):
 
             clip_path_id = f"omClip_{order.get('order-id', 'default').replace('-', '_').replace('.', '_')}_{int(x)}_{int(y)}"
 
-            # Transform from template analysis (values are in mm)
             tx_g1_mm = -5.0270797
             ty_g1_mm = -86.4915987
             transform_g1_template_units_str = f"translate({tx_g1_mm},{ty_g1_mm})"
 
-            # Create the clipPath definition. Contents are in mm, and will be scaled by the `template_content_group`
-            # when the image (which is also in that group) is rendered.
-            clip_path_def_content_group = dwg.g(transform=f"scale({self.px_per_mm})") # Scale the path to behave as if in pixel space for the clipPath def
+            clip_path_def_content_group = dwg.g(transform=f"scale({self.px_per_mm})")
             clip_path_def_content_group.add(dwg.path(d=self.d_clip_ellipse_om008016bw, transform=transform_g1_template_units_str))
 
-            # Ensure dwg.defs exists
-            if dwg.defs is None:
-                dwg.defs = dwg.g() # SVG spec allows g for defs, svgwrite might need proper dwg.defs()
+            if dwg.defs is None: dwg.defs = dwg.g()
 
-            # Check if clip path with this ID already exists
-            existing_clip_path = dwg.defs.querySelector(f"#{clip_path_id}")
+            existing_clip_path = None
+            if dwg.defs.elements:
+                for el_idx, el_val in enumerate(dwg.defs.elements):
+                    if el_val.attribs.get('id') == clip_path_id: existing_clip_path = el_val; break
             if not existing_clip_path:
                  clip_path_element = dwg.clipPath(id=clip_path_id)
                  clip_path_element.add(clip_path_def_content_group)
                  dwg.defs.add(clip_path_element)
 
-
-            # This group scales its children (defined in mm) by px_per_mm.
             template_content_group = om_slot_group.add(dwg.g(transform=f"scale({self.px_per_mm})"))
-
-            # Floral Border (defined in mm, transformed by mm-based g1)
             template_content_group.add(dwg.path(d=self.d_border_om008016bw, style="fill:#000000;stroke:none;", transform=transform_g1_template_units_str))
 
-            # Photo Embedding (defined and positioned in mm)
             photo_path_str = str(order.get('photo_path', ''))
             if photo_path_str and not pd.isna(photo_path_str):
                 actual_photo_path = photo_path_str
                 if not os.path.isabs(photo_path_str):
                     actual_photo_path = os.path.join(self.graphics_path, photo_path_str.replace('\\', os.sep))
-
                 if os.path.exists(actual_photo_path):
                     photo_data = self.embed_image(actual_photo_path)
                     if photo_data:
-                        img_x_mm = 15.1252413
-                        img_y_mm = 16.4017223
-                        img_width_mm = 67.046234
-                        img_height_mm = 87.148118
-
-                        photo_image = dwg.image(
-                            href=photo_data,
-                            insert=(f"{img_x_mm}mm", f"{img_y_mm}mm"),
-                            size=(f"{img_width_mm}mm", f"{img_height_mm}mm")
-                        )
+                        img_x_mm, img_y_mm, img_width_mm, img_height_mm = 15.1252413, 16.4017223, 67.046234, 87.148118
+                        photo_image = dwg.image(href=photo_data, insert=(f"{img_x_mm}mm", f"{img_y_mm}mm"), size=(f"{img_width_mm}mm", f"{img_height_mm}mm"))
                         photo_image.attribs['clip-path'] = f'url(#{clip_path_id})'
                         template_content_group.add(photo_image)
-                    else:
-                        print(f"Failed to embed photo for OM008016BW: {actual_photo_path}")
-                else:
-                    print(f"Warning: Photo not found for OM008016BW at {actual_photo_path}")
-            else:
-                print(f"Warning: No photo_path provided for OM008016BW, order ID: {order.get('order-id', 'N/A')}")
+                    else: print(f"Failed to embed photo for OM008016BW: {actual_photo_path}")
+                else: print(f"Warning: Photo not found for OM008016BW at {actual_photo_path}")
+            else: print(f"Warning: No photo_path provided for OM008016BW, order ID: {order.get('order-id', 'N/A')}")
 
-            # Red Bounding Box (defined in mm)
-            rect_x_mm = 0.05
-            rect_y_mm = 0.05
-            rect_width_mm = 199.90007
-            rect_height_mm = 119.90007
-            rect_ry_mm = 5.9950037
-            rect_stroke_width_mm = 0.0999334
-
-            om_stroke_color = 'yellow' if is_attention_order else '#ff0000' # Default red for OM template
-
-            template_content_group.add(dwg.rect(
-                insert=(f"{rect_x_mm}mm", f"{rect_y_mm}mm"),
-                size=(f"{rect_width_mm}mm", f"{rect_height_mm}mm"),
-                ry=f"{rect_ry_mm}mm",
-                style=f"fill:none;stroke:{om_stroke_color};stroke-width:{rect_stroke_width_mm}mm" # Use conditional stroke
-            ))
-
+            rect_x_mm, rect_y_mm, rect_width_mm, rect_height_mm, rect_ry_mm, rect_stroke_width_mm = 0.05, 0.05, 199.90007, 119.90007, 5.9950037, 0.0999334
+            om_stroke_color = 'yellow' if is_attention_order else '#ff0000'
+            template_content_group.add(dwg.rect(insert=(f"{rect_x_mm}mm", f"{rect_y_mm}mm"), size=(f"{rect_width_mm}mm", f"{rect_height_mm}mm"), ry=f"{rect_ry_mm}mm", style=f"fill:none;stroke:{om_stroke_color};stroke-width:{rect_stroke_width_mm}mm"))
             dwg.add(om_slot_group)
-            # Text elements are intentionally omitted for OM008016BW.
 
         else:
-            # Original logic for other SKUs
+            # Original logic for other SKUs, with conditional stroke and corrected dimension variables
             default_other_stroke_color = 'yellow' if is_attention_order else 'black'
 
             dwg.add(draw_rounded_rect(
-            dwg,
-            insert=(x, y),
-            size=(self.memorial_width_px_default, self.memorial_height_px_default),
-            rx=self.corner_radius_px_default,
-            ry=self.corner_radius_px_default,
-            fill='none',
-            stroke=default_other_stroke_color, # MODIFIED HERE
-            stroke_width=1
+                dwg,
+                insert=(x, y),
+                size=(self.memorial_width_px_default, self.memorial_height_px_default),
+                rx=self.corner_radius_px_default,
+                ry=self.corner_radius_px_default,
+                fill='none',
+                stroke=default_other_stroke_color,
+                stroke_width=1
             ))
 
-            # Use original logic dimension variables (e.g., _orig)
             frame_x = x + self.photo_left_margin_px_orig
             frame_y = y + (self.memorial_height_px_default - self.photo_height_px_orig) / 2
 
             clip_x = frame_x + (self.photo_width_px_orig - self.photo_clip_width_px_orig) / 2
             clip_y = frame_y + (self.photo_height_px_orig - self.photo_clip_height_px_orig) / 2
-            
-            # Text area calculations based on original logic dimensions
-            text_x_calc = frame_x + self.photo_width_px_orig + self.text_right_shift_px_orig
-            # text_area_width_calc = self.memorial_width_px_default - (text_x_calc - x) - self.text_right_shift_px_orig
-            # text_center_x_calc = text_x_calc + text_area_width_calc / 2 - (self.photo_clip_width_px_orig / 2)
-            # text_center_y_calc = y + (28 * self.px_per_mm)
+
+            text_x_for_blue_rect = frame_x + self.photo_width_px_orig + self.text_right_shift_px_orig
+            text_area_width_for_blue_rect = self.memorial_width_px_default - (text_x_for_blue_rect - x) - self.text_right_shift_px_orig
+            text_center_x_for_blue_rect = text_x_for_blue_rect + text_area_width_for_blue_rect / 2 - (self.photo_clip_width_px_orig / 2)
+            text_center_y_for_blue_rect = y + (28 * self.px_per_mm)
 
             dwg.add(draw_rounded_rect(
                 dwg,
@@ -223,32 +186,29 @@ class BWLargePhotoStakesProcessor(MemorialBase):
                 stroke='none'
             )
 
-            # Ensure dwg.defs exists for general case too
-            if dwg.defs is None: # Should have been created by OM008016BW logic if it ran first, but good check
+            if dwg.defs is None:
                 dwg.defs = dwg.g()
 
-            existing_clip_path_orig = dwg.defs.querySelector(f"#clip_{x}_{y}") # Use the same ID style as before
-            if not existing_clip_path_orig: # Check to prevent duplicate IDs
-                clip_path = dwg.defs.add(dwg.clipPath(id=f'clip_{x}_{y}'))
+            clip_path_id_non_om = f'clip_{x}_{y}'
+            existing_clip_path_orig = None
+            if dwg.defs.elements:
+                for el_idx_loop, el_val in enumerate(dwg.defs.elements):
+                    if el_val.attribs.get('id') == clip_path_id_non_om:
+                        existing_clip_path_orig = el_val
+                        break
+            if not existing_clip_path_orig:
+                clip_path = dwg.defs.add(dwg.clipPath(id=clip_path_id_non_om))
                 clip_path.add(clip_rect)
 
-            # Blue outlined rectangle for text area (original logic)
-            # This was commented out in the previous full overwrite, re-evaluating if needed.
-            # For now, let's keep it commented as it was related to text which is not primary for OM SKU.
-            # If it's for visual debugging of text area for normal photo stakes, it can be added back.
-            # text_x_for_blue_rect = frame_x + self.photo_width_px_orig + self.text_right_shift_px_orig
-            # text_area_width_for_blue_rect = self.memorial_width_px_default - (text_x_for_blue_rect - x) - self.text_right_shift_px_orig
-            # text_center_x_for_blue_rect = text_x_for_blue_rect + text_area_width_for_blue_rect / 2 - (self.photo_clip_width_px_orig / 2)
-            # text_center_y_for_blue_rect = y + (28 * self.px_per_mm)
-            # dwg.add(dwg.rect(
-            #     insert=(text_center_x_for_blue_rect, text_center_y_for_blue_rect), # These are pixel values
-            #     size=(self.photo_clip_width_px_orig, self.photo_clip_height_px_orig),
-            #     rx=self.photo_corner_radius_px_orig,
-            #     ry=self.photo_corner_radius_px_orig,
-            #     fill='none',
-            #     stroke='blue',
-            #     stroke_width=self.photo_outline_stroke_px_orig
-            # ))
+            dwg.add(dwg.rect(
+                insert=(text_center_x_for_blue_rect, text_center_y_for_blue_rect),
+                size=(self.photo_clip_width_px_orig, self.photo_clip_height_px_orig),
+                rx=self.photo_corner_radius_px_orig,
+                ry=self.photo_corner_radius_px_orig,
+                fill='none',
+                stroke='blue',
+                stroke_width=self.photo_outline_stroke_px_orig
+            ))
 
             dwg.add(dwg.rect(
                 insert=(frame_x, frame_y),
@@ -256,12 +216,12 @@ class BWLargePhotoStakesProcessor(MemorialBase):
                 rx=self.photo_corner_radius_px_orig,
                 ry=self.photo_corner_radius_px_orig,
                 fill='none',
-                stroke='black', # This is the photo border, not the main slot outline
+                stroke='black',
                 stroke_width=self.photo_border_stroke_px_orig
             ))
 
-            photo_path_str = str(order.get('photo_path', '')) # Ensure string
-            if photo_path_str and not pd.isna(photo_path_str): # Check not empty and not NaN
+            photo_path_str = str(order.get('photo_path', ''))
+            if photo_path_str and not pd.isna(photo_path_str):
                 actual_photo_path = photo_path_str
                 if not os.path.isabs(photo_path_str):
                     actual_photo_path = os.path.join(self.graphics_path, photo_path_str.replace('\\', os.sep))
@@ -273,7 +233,7 @@ class BWLargePhotoStakesProcessor(MemorialBase):
                             href=photo_data,
                             insert=(frame_x, frame_y),
                             size=(self.photo_width_px_orig, self.photo_height_px_orig),
-                            clip_path=f'url(#clip_{x}_{y})'
+                            clip_path=f'url(#{clip_path_id_non_om})'
                         )
                         dwg.add(photo)
                     else:
@@ -283,7 +243,6 @@ class BWLargePhotoStakesProcessor(MemorialBase):
             else:
                 print(f"Warning: No photo_path for SKU {order.get('sku')}")
         
-            # Add text elements using original logic dimension variables
             text_x_final = frame_x + self.photo_width_px_orig + self.text_right_shift_px_orig
             text_area_width_final = self.memorial_width_px_default - (text_x_final - x) - self.text_right_shift_px_orig
             text_center_x_final = text_x_final + text_area_width_final / 2
@@ -369,11 +328,63 @@ class BWLargePhotoStakesProcessor(MemorialBase):
             if 'image_path' in df.columns:
                 df['photo_path'] = df['photo_path'].combine_first(df['image_path'])
         # Filter for B&W large photo stakes
+    # --- Start Diagnostic Logging for Order 203-1227886-3288363 ---
+    target_order_id = '203-1227886-3288363'
+    # Ensure 'order-id' column exists before trying to filter
+    if 'order-id' in df.columns:
+        target_order_df = df[df['order-id'] == target_order_id]
+
+        if not target_order_df.empty:
+            print(f"\n[DIAGNOSTIC] Data for order {target_order_id} BEFORE filtering in BWLargePhotoStakesProcessor:")
+            target_order_data = target_order_df.iloc[0].to_dict() # Convert Series to dict
+            for key, value in target_order_data.items():
+                print(f"  {key}: '{value}' (type: {type(value)})" )
+
+            print(f"\n[DIAGNOSTIC] Filter conditions for order {target_order_id} in BWLargePhotoStakesProcessor:")
+
+            # Condition 1: Colour
+            cond1_colour_val = str(target_order_data.get('colour', '')).lower() # Ensure string for .lower()
+            cond1_met = (cond1_colour_val == 'black')
+            print(f"  1. df['colour'].str.lower() == 'black': Applied as ('{cond1_colour_val}' == 'black') -> {cond1_met}")
+
+            # Condition 2: Type
+            cond2_type_val = str(target_order_data.get('type', '')) # Ensure string for .lower()
+            cond2_type_contains_large_stake = False
+            if pd.notna(cond2_type_val): # Check if Series first, then apply .str methods
+                 cond2_type_contains_large_stake = 'large stake' in cond2_type_val.lower()
+            cond2_met = cond2_type_contains_large_stake
+            print(f"  2. df['type'].str.contains('large stake', case=False, na=False): Applied as ('{cond2_type_val}'.lower() contains 'large stake') -> {cond2_met}")
+
+            # Condition 3: DecorationType
+            cond3_deco_val = str(target_order_data.get('decorationtype', '')).lower() # Ensure string for .lower()
+            cond3_met = (cond3_deco_val == 'photo')
+            print(f"  3. df['decorationtype'].str.lower() == 'photo': Applied as ('{cond3_deco_val}' == 'photo') -> {cond3_met}")
+
+            # Condition 4: Photo Path
+            cond4_path_val = target_order_data.get('photo_path', None)
+            cond4_path_notna = pd.notna(cond4_path_val)
+            cond4_path_notempty = False
+            if cond4_path_notna and isinstance(cond4_path_val, str): # Check type before .strip()
+                cond4_path_notempty = cond4_path_val.strip() != ''
+            elif cond4_path_notna: # Not a string but notna (e.g. if it was a number by mistake)
+                 cond4_path_notempty = True
+
+            cond4_met = cond4_path_notna and cond4_path_notempty
+            print(f"  4. df['photo_path'].notna() AND df['photo_path'] != '': Value '{cond4_path_val}' -> notna={cond4_path_notna}, notempty_if_str_or_true_if_not_str={cond4_path_notempty} -> {cond4_met}")
+
+            overall_should_be_eligible = cond1_met and cond2_met and cond3_met and cond4_met
+            print(f"  Overall, should this order be eligible based on individual checks? {overall_should_be_eligible}\n")
+
+        else:
+            print(f"\n[DIAGNOSTIC] Order {target_order_id} not found in DataFrame in BWLargePhotoStakesProcessor prior to its specific filtering.\n")
+    else:
+        print(f"\n[DIAGNOSTIC] 'order-id' column not found in DataFrame in BWLargePhotoStakesProcessor. Cannot check for target_order_id.\n")
+    # --- End Diagnostic Logging ---
         large_photo_stakes = df[
             (df['colour'].str.lower() == 'black') & 
             (df['type'].str.contains('large stake', case=False, na=False)) &
             (df['decorationtype'].str.lower() == 'photo') &
-            (df['photo_path'].notna())
+            (df['photo_path'].notna() & (df['photo_path'].astype(str).str.strip() != '')) # Ensured non-empty check and astype(str)
         ].copy()
         # Process in batches of 2
         batch_num = 1

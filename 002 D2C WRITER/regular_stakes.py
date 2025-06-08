@@ -12,7 +12,7 @@ from pathlib import Path
 class RegularStakesProcessor(MemorialBase):
     def __init__(self, graphics_path, output_dir):
         super().__init__(graphics_path, output_dir)
-        self.CATEGORY = 'COLOUR'
+        self.CATEGORY = 'regular_stakes' # Updated CATEGORY
         self.grid_cols = 3
         self.grid_rows = 3
         self.batch_size = self.grid_cols * self.grid_rows
@@ -171,8 +171,10 @@ class RegularStakesProcessor(MemorialBase):
     def create_memorial_svg(self, orders, batch_num, output_path=None):
         if orders:
             print(f"Batch {batch_num} first order text fields: line_1={orders[0].get('line_1')}, line_2={orders[0].get('line_2')}, line_3={orders[0].get('line_3')}")
+
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S') # Added timestamp
         if output_path is None:
-            filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
+            filename = f"{self.CATEGORY}_{timestamp_str}_{batch_num:03d}.svg" # Updated filename
             output_path = os.path.join(self.OUTPUT_DIR, filename)
 
         dwg = svgwrite.Drawing(
@@ -188,14 +190,33 @@ class RegularStakesProcessor(MemorialBase):
             x = self.x_offset_px + (col * self.memorial_width_px)
             y = self.y_offset_px + (row * self.memorial_height_px)
 
+            default_slot_stroke_color = 'red'
+            slot_stroke_color = default_slot_stroke_color
+            is_attention_order = False
+
+            if idx < len(orders): # Check if there is an order for this slot
+                current_order_for_attention_check = orders[idx]
+                order_colour_lower = str(current_order_for_attention_check.get('colour', '')).lower()
+                order_type_lower = str(current_order_for_attention_check.get('type', '')).lower()
+
+                if order_colour_lower in ['marble', 'stone']:
+                    is_attention_order = True
+
+                if order_type_lower == 'regular plaque':
+                    is_attention_order = True
+
+                if is_attention_order:
+                    slot_stroke_color = 'yellow'
+            # If no order for this slot, it will use default_slot_stroke_color ('red')
+
             dwg.add(dwg.rect(
                 insert=(x, y),
                 size=(self.memorial_width_px, self.memorial_height_px),
-                rx=6*self.px_per_mm,
-                ry=6*self.px_per_mm,
+                rx=self.corner_radius_px, # Use instance attribute
+                ry=self.corner_radius_px, # Use instance attribute
                 fill='none',
-                stroke='red',
-                stroke_width=0.1*self.px_per_mm
+                stroke=slot_stroke_color, # MODIFIED HERE
+                stroke_width=self.stroke_width # Use instance attribute
             ))
 
             if idx < len(orders):
@@ -329,6 +350,69 @@ class RegularStakesProcessor(MemorialBase):
 
         dwg.save()
         return dwg
+
+    # Overridden create_batch_csv with timestamp logic (but not ATTENTION_FLAG yet)
+    def create_batch_csv(self, orders, batch_num, category):
+        """Create CSV file for the batch with specified category prefix, using a timestamp."""
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        svg_reference_filename = f"{category}_{timestamp_str}_{batch_num:03d}.svg"
+        csv_filename = f"{category}_{timestamp_str}_{batch_num:03d}.csv"
+        design_file_ref = f"{category}_{timestamp_str}_{batch_num:03d}"
+
+        filepath = os.path.join(self.OUTPUT_DIR, csv_filename)
+
+        all_keys = set()
+        for order in orders:
+            all_keys.update([k.upper() for k in order.keys()])
+
+        preferred_columns = [
+            'SVG FILE', 'DESIGN FILE', 'ORDER-ID', 'ORDER-ITEM-ID', 'SKU', 'NUMBER-OF-ITEMS',
+            'TYPE', 'COLOUR', 'GRAPHIC', 'LINE_1', 'LINE_2', 'LINE_3', 'THEME',
+            'ATTENTION_FLAG', 'WARNINGS' # Added ATTENTION_FLAG
+        ]
+        extra_columns = [col for col in all_keys if col.upper() not in [pc.upper() for pc in preferred_columns]]
+        columns = preferred_columns + sorted(list(set(extra_columns)))
+
+        data = []
+        for order in orders:
+            row = {}
+            row['SVG FILE'] = svg_reference_filename
+            row['DESIGN FILE'] = design_file_ref
+
+            # Populate ATTENTION_FLAG
+            attention_messages = []
+            order_colour_lower = str(order.get('colour', '')).lower()
+            order_type_lower = str(order.get('type', '')).lower()
+
+            if order_colour_lower in ['marble', 'stone']:
+                attention_messages.append(f"RARE_COLOUR: {str(order.get('colour','')).upper()}")
+
+            if order_type_lower == 'regular plaque':
+                type_display = order.get('type', 'Regular Plaque')
+                attention_messages.append(f"TYPE: {type_display}")
+
+            row['ATTENTION_FLAG'] = "; ".join(attention_messages)
+
+            for col_header in columns:
+                if col_header in ['SVG FILE', 'DESIGN FILE', 'ATTENTION_FLAG']: # Skip already populated
+                    continue
+                val = order.get(col_header.lower(), order.get(col_header, order.get(col_header.upper(), '')))
+                if col_header == 'NUMBER-OF-ITEMS' and val == '':
+                    val = order.get('number-of-items', '')
+                row[col_header] = val
+
+            row['WARNINGS'] = MemorialBase.generate_warnings(order) # Calls MemorialBase static method
+            data.append(row)
+
+        df = pd.DataFrame(data)
+        if not df.empty:
+            final_df_columns = [col for col in columns if col in df.columns]
+            if final_df_columns:
+                 df = df[final_df_columns]
+
+        df.to_csv(filepath, index=False, encoding="utf-8")
+        print(f"Generated CSV: {filepath}")
 
     import sys
 
