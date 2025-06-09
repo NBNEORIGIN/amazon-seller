@@ -1,4 +1,4 @@
-SKU,COLOUR,TYPE,DecorationType,Theme,ProcessorCategory
+﻿SKU,COLOUR,TYPE,DecorationType,Theme,ProcessorCategory
 OC062001_L_US,Brass,Large Metal,,,unclassified
 OC062005_L_US,Aluminium,Large Metal,Graphic,,unclassified
 OD042004,Silver,Regular Stake,Graphic,Pet,regular_stakes_graphic_coloured
@@ -63,7 +63,7 @@ OD042013USGraphic,Silver,Regular Stake,Graphic,,regular_stakes_graphic_coloured
 M0634S - CAT - COPPER,Copper,Small Stake,Graphic,Pet,small_stakes_graphic_coloured
 OD045004,Gold,Regular Stake,Graphic,,regular_stakes_graphic_coloured
 OM008015UK Large Black,Black,Large Stake,Photo,,large_stakes_photo_bw
-OD045048Gold,Gold,Heart Stake,Graphic,,heart_stakes_graphic
+OD045048Gold,Gold,Heart Stake,Graphic,,heart_stakes_graphic_coloured
 OC062001_S_CA,Brass,Small Metal,,,unclassified
 OM008015UK Large Copper,Copper,Large Stake,Photo,,large_stakes_photo_coloured
 OD042004Silver,Silver,Regular Stake,Graphic,,regular_stakes_graphic_coloured

@@ -43,6 +43,7 @@ from bw_photo_stakes import BWPhotoStakesProcessor
 from coloured_small_stakes_template_processor import ColouredSmallStakesTemplateProcessor
 from coloured_large_stakes import ColouredLargeStakesProcessor
 from bw_small_stakes_template_processor import BlackAndWhiteSmallStakesTemplateProcessor # Added this import
+from coloured_heart_stakes_processor import ColouredHeartStakesProcessor # Added this import
 
 class DropZone(QLabel):
     file_dropped = pyqtSignal(list)  # Signal to emit list of file paths
@@ -793,7 +794,7 @@ class MainWindow(QMainWindow):
             # "large_stakes_photo_bw": BWPhotoStakesProcessor, # Removed as BWPhotoStakesProcessor is for regular stakes. No specific processor for large B&W photo.
             "small_stakes_graphic_coloured": ColouredSmallStakesTemplateProcessor,
             "small_stakes_graphic_bw": BlackAndWhiteSmallStakesTemplateProcessor,
-            # "heart_stakes_graphic": None, # Explicitly unmapped as no processor exists. Or simply omit the key.
+            "heart_stakes_graphic_coloured": ColouredHeartStakesProcessor, # Added new processor
             # 'unclassified' and 'metal_products_raw' will be skipped by default in create_all_svgs
         }
 
