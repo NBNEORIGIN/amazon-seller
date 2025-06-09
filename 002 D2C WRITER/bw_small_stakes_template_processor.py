@@ -14,16 +14,26 @@ class BlackAndWhiteSmallStakesTemplateProcessor(ColouredSmallStakesTemplateProce
         self.batch_size = 3  # Only 3 memorials per batch (bottom row)
 
     def process_orders(self, df):
+        # Input `df` is assumed to be pre-filtered for this processor's category.
         df = df.copy()
         df.columns = [col.lower() for col in df.columns]
-        df['type'] = df['type'].astype(str).str.strip().str.lower()
-        df['colour'] = df['colour'].astype(str).str.strip().str.lower()
-        # Only small stake, black
-        filtered = df[(df['type'] == 'small stake') & (df['colour'] == 'black')]
-        print('Filtered rows for B&W Small Stakes:', len(filtered))
+        # Normalization of type and colour is good, ensure it's done if not guaranteed by caller.
+        if 'type' in df.columns:
+            df['type'] = df['type'].astype(str).str.strip().str.lower()
+        if 'colour' in df.columns:
+            df['colour'] = df['colour'].astype(str).str.strip().str.lower()
+
+        # Filtering logic removed. Input df is now df_to_process.
+        df_to_process = df
+
+        if df_to_process.empty:
+            print(f"No eligible orders for BlackAndWhiteSmallStakesTemplateProcessor.")
+            return
+
+        print('Processing {len(df_to_process)} B&W Small Stakes orders.')
         batch_num = 1
-        for start_idx in range(0, len(filtered), self.batch_size):
-            batch_orders = filtered.iloc[start_idx:start_idx + self.batch_size]
+        for start_idx in range(0, len(df_to_process), self.batch_size):
+            batch_orders = df_to_process.iloc[start_idx:start_idx + self.batch_size]
             if not batch_orders.empty:
                 svg_out_path = os.path.join(
                     self.output_dir,

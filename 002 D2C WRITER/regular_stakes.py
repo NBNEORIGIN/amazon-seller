@@ -50,6 +50,7 @@ class RegularStakesProcessor(MemorialBase):
 
 
     def process_orders(self, orders):
+        # Input `orders` (or `df`) is assumed to be pre-filtered for this processor's category.
         print("[DEBUG] Entered RegularStakesProcessor.process_orders")
         if isinstance(orders, list):
             df = pd.DataFrame(orders)
@@ -70,94 +71,65 @@ class RegularStakesProcessor(MemorialBase):
         print(f"Columns after normalization: {list(df.columns)}")
         print(df.head())
 
-        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
-        # Filter for Regular Stake, allowed colours, and DecorationType == Graphic
-        eligible = df[
-            (df['type'] == 'regular stake') &
-            (df['colour'].isin(allowed_colours)) &
-            (df['decorationtype'] == 'graphic')
-        ].copy()
-        print(f"Rows after filtering for Regular Stake, allowed colours, and DecorationType == 'graphic': {len(eligible)}")
-        print(eligible[['order-id', 'sku', 'colour', 'decorationtype']].head() if not eligible.empty else eligible.head())
-        if eligible.empty:
-            print("No eligible regular stakes found for regular_stakes.py processor.")
-            return
+        # The initial filtering based on type, colour, and decorationtype is removed.
+        # The input DataFrame `df` is assumed to be pre-filtered.
 
-        # Expand rows by number-of-items
+        # Expand rows by number-of-items - this should still be done on the input df
         expanded_rows = []
-        for _, row in df.iterrows():
+        for _, row in df.iterrows(): # Iterate over the input df
             try:
                 qty = int(row.get('number-of-items', 1))
-                qty = max(qty, 1)
-            except Exception:
+                qty = max(qty, 1) # Ensure qty is at least 1
+            except (ValueError, TypeError): # Catch potential errors if 'number-of-items' is not a valid number
                 qty = 1
             for _ in range(qty):
                 expanded_rows.append(row.copy())
-        df_expanded = pd.DataFrame(expanded_rows)
 
-        allowed_types = ['regular stake', 'regular plaque']
-        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
-        special_skus = ['om008021']  # Extendable for future special cases
-        # Ensure all relevant fields are lowercased for comparison
-        df_expanded['type'] = df_expanded['type'].astype(str).str.strip().str.lower()
-        df_expanded['colour'] = df_expanded['colour'].astype(str).str.strip().str.lower()
-        df_expanded['decorationtype'] = df_expanded['decorationtype'].astype(str).str.strip().str.lower()
-        df_expanded['sku'] = df_expanded['sku'].astype(str).str.strip().str.lower()
-        filtered = df_expanded[
-            (
-                df_expanded['type'].isin(allowed_types) &
-                df_expanded['colour'].isin(allowed_colours) &
-                (df_expanded['decorationtype'] == 'graphic')
-            ) |
-            (df_expanded['sku'].isin(special_skus))
-        ].copy()
+        if not expanded_rows: # If df was empty or only had invalid qtys
+            print("No rows to process after expansion.")
+            return
 
+        df_to_process = pd.DataFrame(expanded_rows)
+
+        # Ensure relevant columns are consistently typed and cased for further processing, if not already.
+        # These were previously applied to df_expanded, now apply to df_to_process.
+        if 'type' in df_to_process.columns:
+            df_to_process['type'] = df_to_process['type'].astype(str).str.strip().str.lower()
+        if 'colour' in df_to_process.columns:
+            df_to_process['colour'] = df_to_process['colour'].astype(str).str.strip().str.lower()
+        if 'decorationtype' in df_to_process.columns:
+            df_to_process['decorationtype'] = df_to_process['decorationtype'].astype(str).str.strip().str.lower()
+        if 'sku' in df_to_process.columns:
+            df_to_process['sku'] = df_to_process['sku'].astype(str).str.strip().str.lower()
+
+        # Internal sorting logic (e.g., by color_priority) can remain if it's for processing order within the category.
         color_priority = {'copper': 0, 'gold': 1, 'silver': 2, 'stone': 3, 'marble': 4}
-        filtered['color_priority'] = filtered['colour'].map(color_priority)
-        filtered = filtered.sort_values('color_priority')
+        if 'colour' in df_to_process.columns:
+            df_to_process['color_priority'] = df_to_process['colour'].map(color_priority)
+            df_to_process = df_to_process.sort_values('color_priority')
 
-        # --- Exclude photo SKUs based on SKULIST.csv ---
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        skulist_path = os.path.join(project_root, 'assets', 'SKULIST.csv')
-        print(f"[DEBUG] Attempting to read SKULIST.csv from: {skulist_path}")
-        skulist_df = pd.read_csv(skulist_path)
-        skulist_df.columns = [col.lower().strip() for col in skulist_df.columns]
-        if 'decorationtype' in skulist_df.columns:
-            skulist_df['decorationtype'] = skulist_df['decorationtype'].astype(str).str.strip().str.lower()
-        else:
-            print("Warning: 'decorationtype' column not found in SKULIST.csv!")
-            skulist_df['decorationtype'] = ''
-        if 'type' in skulist_df.columns:
-            skulist_df['type'] = skulist_df['type'].astype(str).str.strip().str.lower()
-        else:
-            print("Warning: 'type' column not found in SKULIST.csv!")
-            skulist_df['type'] = ''
-        photo_skus = set(skulist_df[(skulist_df['type'].isin(['regular stake', 'regular plaque'])) & (skulist_df['decorationtype'] == 'photo')]['sku'].astype(str).str.strip())
-        print("photo_skus being used for exclusion:", photo_skus)
-        print("SKUs in filtered before exclusion:", filtered['sku'].tolist())
-        # TEMPORARILY DISABLE photo SKU exclusion for debugging
-        # No further filtering needed here; all logic is handled above.
-        print(f"[DEBUG] Filtered regular stakes and plaques (with special SKUs): {len(filtered)}")
-        print(f"Sample regular stakes: {filtered[['order-id', 'sku', 'colour', 'decorationtype']].head()}")
+        # The photo SKU exclusion logic is removed as it's part of the initial broad category filtering.
 
-        print(f"\nFiltered columns: {list(filtered.columns)}")
-        print(filtered.head())
-        print(f"\nFound {len(filtered)} Regular Stakes (copper/gold/silver)")
-
-        # DEBUG: Show filtered orders to be batched
-        print("Filtered orders to be batched:")
-        print(filtered[['order-id', 'sku', 'line_1']])
+        print(f"[DEBUG] DataFrame ready for batching (RegularStakesProcessor): {len(df_to_process)} rows")
+        print(f"Sample data: {df_to_process[['order-id', 'sku', 'colour', 'decorationtype']].head() if not df_to_process.empty else 'DataFrame is empty'}")
 
         batch_num = 1
-        total = len(filtered)
+        total = len(df_to_process) # Use df_to_process
         print(f"[DEBUG] self.batch_size: {self.batch_size}")
-        print(f"[DEBUG] total filtered rows: {total}")
+        print(f"[DEBUG] total rows to process: {total}")
+
         if not isinstance(self.batch_size, int) or self.batch_size <= 0:
-            print("[WARNING] batch_size is invalid (<=0 or not int)")
-        for start_idx in range(0, total, self.batch_size):
-            end_idx = min(start_idx + self.batch_size, total)
+            print("[WARNING] batch_size is invalid (<=0 or not int), defaulting to processing all in one batch.")
+            # Fallback or error handling for invalid batch_size can be added here
+            # For now, let's assume if batch_size is invalid, it processes all as one batch if total > 0
+            current_batch_size = total if total > 0 else 1 # Avoid division by zero if total is 0
+        else:
+            current_batch_size = self.batch_size
+
+        for start_idx in range(0, total, current_batch_size):
+            end_idx = min(start_idx + current_batch_size, total)
             print(f"[DEBUG] Batch indices: start_idx={start_idx}, end_idx={end_idx}")
-            batch_orders = filtered.iloc[start_idx:end_idx]
+            batch_orders = df_to_process.iloc[start_idx:end_idx] # Use df_to_process
             print(f"\nProcessing Regular Stake batch {batch_num}: rows {start_idx} to {end_idx-1} (batch size: {len(batch_orders)})")
             if not batch_orders.empty:
                 orders_dict = batch_orders.to_dict('records')

@@ -267,6 +267,7 @@ class PhotoStakesProcessor(MemorialBase):
             return None
 
     def process_orders(self, orders):
+        # Input `orders` (or `df`) is assumed to be pre-filtered for this processor's category.
         print('[WINDSURF PATCH] PhotoStakesProcessor.process_orders called')
         try:
             if pd is None:
@@ -288,41 +289,35 @@ class PhotoStakesProcessor(MemorialBase):
             df['image_path'] = df['image_path'].astype(str).str.strip()
             print(f"[DEBUG] Columns after normalization: {list(df.columns)}")
             print(df.head())
-            allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble', 'gold']
-            # Only include rows where 'graphic' is 'Photo' (set by pipeline), and all other criteria
-            # Debug: print image_path values for all candidate rows
-            print('[DEBUG] image_path values for all rows:')
-            print(df[['order-id', 'image_path']])
-            eligible = df[
-                (df['type'].isin(['regular stake', 'regular plaque'])) & # MODIFIED HERE
-                (df['colour'].isin(allowed_colours)) &
-                (
-                    (df['graphic'].str.lower() == 'photo') |
-                    (df['decorationtype'].str.lower() == 'photo')
-                ) &
-                (df['image_path'].notna()) & (df['image_path'].astype(str).str.strip() != '')
-            ].copy()
-            print(f"[DEBUG] Rows after filtering for Regular Stake, allowed colours, and graphic == 'Photo': {len(eligible)}")
-            if not eligible.empty:
-                print(eligible[['order-id', 'sku', 'colour', 'decorationtype', 'graphic']].head())
-            else:
-                print(eligible.head())
-            if eligible.empty:
-                print("No eligible photo stakes found for photo_stakes.py processor.")
+
+            # Initial filtering removed. The input df is assumed to be pre-filtered.
+            # However, this processor specifically requires 'image_path' to be valid.
+            df_processed = df[(df['image_path'].notna()) & (df['image_path'].astype(str).str.strip() != '')].copy()
+
+            if df_processed.empty:
+                print("No eligible photo stakes found after validating 'image_path'.")
                 return
+
             # Expand rows by number-of-items
             expanded_rows = []
-            for _, row in eligible.iterrows():
+            for _, row in df_processed.iterrows(): # Use df_processed (validated image_path)
                 try:
                     qty = int(row.get('number-of-items', 1))
-                    qty = max(qty, 1)
-                except Exception:
+                    qty = max(qty, 1) # Ensure qty is at least 1
+                except (ValueError, TypeError):
                     qty = 1
                 for _ in range(qty):
                     expanded_rows.append(row.copy())
+
+            if not expanded_rows:
+                print("No rows after expansion.")
+                return
+
             df_expanded = pd.DataFrame(expanded_rows)
+            print(f"[DEBUG] Total items to process after expansion: {len(df_expanded)}")
+
             batch_num = 1
-            for start_idx in range(0, len(df_expanded), 3):
+            for start_idx in range(0, len(df_expanded), 3): # Process 3 items per SVG
                 batch_orders = df_expanded.iloc[start_idx:start_idx + 3]
                 if not batch_orders.empty:
                     print(f"\n[DEBUG] Processing Photo batch {batch_num}...")

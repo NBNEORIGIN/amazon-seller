@@ -17,6 +17,7 @@ class ColouredSmallStakesTemplateProcessor:
         self.batch_size = 9  # 3x3 grid
 
     def process_orders(self, df):
+        # Input `df` is assumed to be pre-filtered for this processor's category.
         df = df.copy()
         df.columns = [col.lower() for col in df.columns]
         # Normalize and diagnose unique values
@@ -26,26 +27,19 @@ class ColouredSmallStakesTemplateProcessor:
         print('Unique type values:', df['type'].unique())
         print('Unique colour values:', df['colour'].unique())
         print('Unique decorationtype values:', df['decorationtype'].unique())
-        # Accept synonyms for type and decorationtype
-        type_synonyms = {'small stake', 'small metal'}
-        allowed_colours = ['copper', 'gold', 'silver', 'stone', 'marble']
-        decorationtype_synonyms = {'graphic', 'decorationtype'}
-        # Diagnostics: Show which rows match each filter
-        type_mask = df['type'].isin(type_synonyms)
-        colour_mask = df['colour'].isin(allowed_colours)
-        decorationtype_mask = df['decorationtype'].isin(decorationtype_synonyms)
-        print(f"Rows matching type: {type_mask.sum()}")
-        print(df[type_mask][['type','colour','decorationtype']])
-        print(f"Rows matching colour: {colour_mask.sum()}")
-        print(df[colour_mask][['type','colour','decorationtype']])
-        print(f"Rows matching decorationtype: {decorationtype_mask.sum()}")
-        print(df[decorationtype_mask][['type','colour','decorationtype']])
-        filtered = df[type_mask & colour_mask & decorationtype_mask].copy()
-        print(f"Filtered rows (all conditions): {len(filtered)}")
-        n_orders = len(filtered)
+
+        # Filtering logic removed. Input df is assumed to be pre-filtered.
+        df_to_process = df
+
+        if df_to_process.empty:
+            print(f"No eligible orders for ColouredSmallStakesTemplateProcessor.")
+            return
+
+        print(f"Processing {len(df_to_process)} orders for ColouredSmallStakesTemplateProcessor.")
+        n_orders = len(df_to_process)
         batch_num = 1
         for start_idx in range(0, n_orders, self.batch_size):
-            batch_orders = filtered.iloc[start_idx:start_idx + self.batch_size]
+            batch_orders = df_to_process.iloc[start_idx:start_idx + self.batch_size]
             if not batch_orders.empty:
                 svg_out_path = os.path.join(
                     self.output_dir,

@@ -300,6 +300,12 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
                 warning_text = missing_sku_warning + "; " + warning_text
             else:
                 warning_text = missing_sku_warning
+        # Retrieve processor_category from sku_info
+        processor_category = sku_info.get('processorcategory', 'unclassified')
+        if not processor_category: # Handles empty string as well
+            processor_category = 'unclassified'
+        row["processor_category"] = processor_category
+
         row["Warnings"] = warning_text
         print(f"[DEBUG] Writing row to CSV: {row}")
         output_rows.append(row)
@@ -318,10 +324,17 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
     # --- END WINDSURF PATCH ---
     # Write CSV (comma-delimited)
     output_csv = os.path.join(output_dir, "output.csv")
+    # Updated fieldnames to include processor_category
     fieldnames = [
         "order-id", "order-item-id", "sku", "number-of-items",
-        "type", "colour", "graphic", "line_1", "line_2", "line_3", "image_path", "theme", "decorationtype", "Warnings"
+        "type", "colour", "graphic", "line_1", "line_2", "line_3",
+        "image_path", "theme", "decorationtype", "processor_category", "Warnings"
     ]
+    # Ensure processor_category column exists in df_out, if not, add it with default 'unclassified'
+    if 'processor_category' not in df_out.columns:
+        print(f"[WARNING] 'processor_category' column was not created during row processing. Adding it now with default 'unclassified'.")
+        df_out['processor_category'] = 'unclassified'
+
     df_out.to_csv(output_csv, index=False, columns=fieldnames, encoding="utf-8-sig")
     # Write TXT (tab-delimited)
     output_txt = os.path.join(output_dir, "output.txt")
@@ -330,4 +343,28 @@ def process_amazon_orders(report_paths, images_dir, output_dir, skulist_path=Non
     unmapped = [row['sku'] for row in output_rows if not row['type'] and not row['colour']]
     if unmapped:
         print(f"Unmapped SKUs: {unmapped}")
-    return df_out
+
+    # Group by processor_category and save categorized CSVs
+    categorized_dfs = {}
+    if 'processor_category' in df_out.columns:
+        grouped = df_out.groupby('processor_category')
+        for category_name, group_df in grouped:
+            categorized_dfs[category_name] = group_df
+            category_filename = os.path.join(output_dir, f"output_category_{str(category_name).replace(' ', '_').lower()}.csv")
+            try:
+                group_df.to_csv(category_filename, index=False, columns=fieldnames, encoding="utf-8-sig")
+                print(f"Saved categorized CSV: {category_filename}")
+            except Exception as e:
+                print(f"[ERROR] Could not save categorized CSV {category_filename}: {e}")
+    else:
+        print("[WARNING] 'processor_category' column not found in DataFrame. All orders will be in 'unclassified' group.")
+        categorized_dfs['unclassified'] = df_out.copy()
+        # Attempt to save the unclassified group if the column was missing
+        category_filename = os.path.join(output_dir, "output_category_unclassified.csv")
+        try:
+            df_out.to_csv(category_filename, index=False, columns=fieldnames, encoding="utf-8-sig")
+            print(f"Saved unclassified orders (due to missing category column) to: {category_filename}")
+        except Exception as e:
+            print(f"[ERROR] Could not save unclassified CSV {category_filename}: {e}")
+
+    return categorized_dfs

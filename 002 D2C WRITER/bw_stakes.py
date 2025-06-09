@@ -26,6 +26,7 @@ class BWStakesProcessor(MemorialBase):
         # positioning is absolute from bottom-right.
 
     def process_orders(self, df): # Reverted: lang_tool_instance_global parameter removed
+        # Input `df` is assumed to be pre-filtered for this processor's category.
         # Normalize all column names to lowercase and strip
         df.columns = [col.lower().strip() for col in df.columns]
         if 'type' in df.columns:
@@ -38,42 +39,48 @@ class BWStakesProcessor(MemorialBase):
         else:
             df['decorationtype'] = df['decorationtype'].astype(str).str.strip().str.lower()
 
-        allowed_colours = ['black']
-        eligible = df[
-            (df['type'] == 'regular stake') &
-            (df['colour'].isin(allowed_colours)) &
-            (df['decorationtype'] == 'graphic')
-        ].copy()
-        print(f"[BW DEBUG] Eligible before expansion: {len(eligible)}")
+        # Initial filtering removed. The input df is assumed to be pre-filtered.
+        # Ensure 'graphic' column is notna if it's a strict requirement for this processor.
+        # If it can proceed without 'graphic' (e.g. text only), then this check is not needed here.
+        # Based on original logic, 'graphic' notna() was a condition.
+        if 'graphic' in df.columns:
+            df = df[df['graphic'].notna()].copy()
+            if df.empty:
+                print("[BW DEBUG] No eligible B&W stakes after checking for non-null graphic.")
+                return
+        else: # If no graphic column, cannot proceed with this check, might be an issue.
+            print("[BW DEBUG] Warning: 'graphic' column not found. Proceeding without graphic check.")
 
-        if eligible.empty:
-            print("[BW DEBUG] No eligible B&W stakes before expansion.")
-            return
 
-        # Expand rows by number-of-items
+        # Expand rows by number-of-items from the input df
         expanded_rows = []
-        for _, row in eligible.iterrows():
+        for _, row in df.iterrows(): # Use the (potentially graphic-filtered) input df
             try:
                 qty = int(row.get('number-of-items', 1))
-                qty = max(qty, 1)
-            except Exception:
+                qty = max(qty, 1) # Ensure qty is at least 1
+            except (ValueError, TypeError):
                 qty = 1
             for _ in range(qty):
                 expanded_rows.append(row.copy())
-        df_expanded = pd.DataFrame(expanded_rows)
 
-        bw_stakes = df_expanded[
-            (df_expanded['type'] == 'regular stake') &
-            (df_expanded['colour'].isin(allowed_colours)) &
-            (df_expanded['decorationtype'] == 'graphic') &
-            (df_expanded['graphic'].notna())
-        ].copy()
-        print(f"\nFound {len(bw_stakes)} B&W Stakes")
+        if not expanded_rows:
+            print("[BW DEBUG] No rows after expansion.")
+            return
+
+        df_to_process = pd.DataFrame(expanded_rows)
+
+        # Ensure other columns are consistently cased if needed by downstream logic, though already done for type/colour/deco
+        # df_to_process['type'] = df_to_process['type'].astype(str).str.strip().str.lower()
+        # df_to_process['colour'] = df_to_process['colour'].astype(str).str.strip().str.lower()
+        # df_to_process['decorationtype'] = df_to_process['decorationtype'].astype(str).str.strip().str.lower()
+
+        print(f"\nFound {len(df_to_process)} B&W Stakes items to process (after expansion).")
         
         # Process in batches of 3
         batch_num = 1
-        for start_idx in range(0, len(bw_stakes), 3):
-            batch_orders = bw_stakes.iloc[start_idx:start_idx + 3]
+        # Use df_to_process for batching
+        for start_idx in range(0, len(df_to_process), 3):
+            batch_orders = df_to_process.iloc[start_idx:start_idx + 3]
             if not batch_orders.empty:
                 print(f"\nProcessing B&W batch {batch_num}...")
                 self.create_memorial_svg(batch_orders.to_dict('records'), batch_num)

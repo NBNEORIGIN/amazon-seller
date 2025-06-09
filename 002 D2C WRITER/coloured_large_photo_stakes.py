@@ -9,6 +9,7 @@ from core.processors.svg_utils import draw_rounded_rect, add_multiline_text
 
 class ColouredLargePhotoStakesProcessor(MemorialBase):
     def process_orders(self, orders):
+        # Input `orders` (or `df`) is assumed to be pre-filtered for this processor's category.
 
         # Accept both DataFrame and list
         if isinstance(orders, list):

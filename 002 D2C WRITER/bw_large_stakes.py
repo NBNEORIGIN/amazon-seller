@@ -207,6 +207,7 @@ class BWLargeStakesProcessor(MemorialBase):
         dwg.save()
 
     def process_orders(self, df):
+        # Input `df` is assumed to be pre-filtered for this processor's category.
         print(f"[DEBUG] Entering process_orders for {self.CATEGORY}")
         print(f"[DEBUG] Initial DataFrame shape: {df.shape}")
         print("[DEBUG] Initial DataFrame head:\n", df.head())
@@ -236,59 +237,31 @@ class BWLargeStakesProcessor(MemorialBase):
         print(f"[DEBUG] DataFrame shape after normalization/type conversion: {df.shape}")
         print("[DEBUG] DataFrame head after normalization/type conversion:\n", df.head())
 
-        allowed_colours = ['black', 'slate']
-        print(f"[DEBUG] Filtering conditions: type == 'large stake', colour in {allowed_colours}, decorationtype == 'graphic'")
+        # Filtering logic removed. Input df is assumed to be pre-filtered.
+        # Assign df to df_to_process for consistency if other processors use that name,
+        # or just use df directly if no further modifications before batching.
+        df_to_process = df # Using df directly as no expansion or further filtering here.
 
-        # Apply filters
-        large_stakes = df[
-            (df['type'] == 'large stake') &
-            (df['colour'].isin(allowed_colours)) &
-            (df['decorationtype'] == 'graphic')
-        ].copy() # Use .copy() to avoid SettingWithCopyWarning
-
-        print(f"[DEBUG] DataFrame shape after filtering: {large_stakes.shape}")
-        if not large_stakes.empty:
-            print("[DEBUG] Filtered large_stakes head:\n", large_stakes.head())
-            print("[DEBUG] Sample rows from filtered large_stakes (up to 5):")
-            for i, (_, row) in enumerate(large_stakes.head().iterrows()):
-                print(f"  Row {i}: Order ID: {row.get('order-id', 'N/A')}, SKU: {row.get('sku', 'N/A')}, Type: {row.get('type')}, Colour: {row.get('colour')}, Deco: {row.get('decorationtype')}, Graphic: {row.get('graphic', 'N/A')}")
-        else:
-            print("[DEBUG] No rows matched the filtering criteria for large stakes.")
-            # Optional: Log why some rows that might seem eligible were excluded
-            potential_matches = df[df['type'] == 'large stake']
-            if not potential_matches.empty:
-                print(f"[DEBUG] Found {len(potential_matches)} rows with type 'large stake' before other filters.")
-                for idx, row in potential_matches.head().iterrows(): # Check a few
-                    reasons = []
-                    if not row['colour'] in allowed_colours: reasons.append(f"colour='{row['colour']}' (not in {allowed_colours})")
-                    if not row['decorationtype'] == 'graphic': reasons.append(f"decorationtype='{row['decorationtype']}' (not 'graphic')")
-                    if reasons: print(f"  Potential Large Stake (Order ID: {row.get('order-id', 'N/A')}) excluded due to: {'; '.join(reasons)}")
-            else:
-                print("[DEBUG] No rows even matched type 'large stake'.")
-
-
-        if large_stakes.empty:
-            print(f"No eligible {self.CATEGORY} found.")
+        if df_to_process.empty:
+            print(f"No eligible {self.CATEGORY} found in the input DataFrame.")
             return
 
-        print(f"\nFound {len(large_stakes)} orders for {self.CATEGORY}")
+        print(f"\nFound {len(df_to_process)} orders for {self.CATEGORY}")
 
         # Process in batches of 2 (as per self.grid_cols)
         batch_size = self.grid_cols
-        for batch_num, batch_start in enumerate(range(0, len(large_stakes), batch_size), 1):
-            batch_df = large_stakes.iloc[batch_start:batch_start + batch_size]
+        for batch_num, batch_start in enumerate(range(0, len(df_to_process), batch_size), 1):
+            batch_df = df_to_process.iloc[batch_start:batch_start + batch_size]
             if not batch_df.empty:
                 print(f"\nProcessing {self.CATEGORY} batch {batch_num} ({len(batch_df)} orders)...")
-                # print(batch_df[['order-id','type','colour','decorationtype']].head()) # Already logged above more detailed
                 self.create_memorial_svg(batch_df.to_dict('records'), batch_num)
-                self.create_batch_csv(batch_df.to_dict('records'), batch_num, self.CATEGORY) # Uses updated self.CATEGORY
+                self.create_batch_csv(batch_df.to_dict('records'), batch_num, self.CATEGORY)
 
         # Export CSV for all processed large stakes for this category
-        if not large_stakes.empty:
+        if not df_to_process.empty:
             os.makedirs(self.OUTPUT_DIR, exist_ok=True)
-            # Use new self.CATEGORY for the consolidated CSV filename
             csv_filename = os.path.join(self.OUTPUT_DIR, f"{self.CATEGORY}_{self.date_str}_ALL.csv")
-            large_stakes.to_csv(csv_filename, index=False, encoding="utf-8")
-            print(f"Exported consolidated {self.CATEGORY} CSV: {csv_filename} ({len(large_stakes)} rows)")
+            df_to_process.to_csv(csv_filename, index=False, encoding="utf-8")
+            print(f"Exported consolidated {self.CATEGORY} CSV: {csv_filename} ({len(df_to_process)} rows)")
         else:
             print(f"No {self.CATEGORY} to export to consolidated CSV.")

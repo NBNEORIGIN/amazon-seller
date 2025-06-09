@@ -234,6 +234,7 @@ class BWPhotoStakesProcessor(MemorialBase):
             print(f"[BWPhotoStakesProcessor] ERROR: Failed to write SVG {filepath}\n{tb}")
 
     def process_orders(self, orders):
+        # Input `orders` (or `df`) is assumed to be pre-filtered for this processor's category.
         print("\n[BW DEBUG] BWPhotoStakesProcessor.process_orders CALLED")
         if hasattr(orders, 'columns'):
             print("[BW DEBUG] Incoming DataFrame columns:", list(orders.columns))
@@ -253,32 +254,30 @@ class BWPhotoStakesProcessor(MemorialBase):
         print("[BW DEBUG] DataFrame after normalization (head):")
         print(df.head())
         print("[BW DEBUG] Unique 'type':", df['type'].unique() if 'type' in df.columns else 'N/A')
-        print("[BW DEBUG] Rows with non-empty image_path:", df[df['image_path'].notna() & (df['image_path'] != '')].shape[0])
-        print("[BW DEBUG] Total rows before filtering:", len(df))
+        print("[BW DEBUG] Rows with non-empty image_path:", df[df['image_path'].notna() & (df['image_path'] != '')].shape[0] if 'image_path' in df.columns else 'N/A - image_path col missing')
+        print("[BW DEBUG] Total rows before any specific validation:", len(df))
 
-        # Stepwise filter debugging
-        step1 = df[df['type'] == 'regular stake']
-        print("[BW DEBUG] Rows after type=='regular stake':", len(step1))
-        step2 = step1[step1['colour'] == 'black']
-        print("[BW DEBUG] Rows after colour=='black':", len(step2))
-        step3 = step2[step2['decorationtype'] == 'photo']
-        print("[BW DEBUG] Rows after decorationtype=='photo':", len(step3))
-        step4 = step3[step3['image_path'].notna() & (step3['image_path'] != '')]
-        print("[BW DEBUG] Rows after image_path check:", len(step4))
-        # Now use step4 as bw_stakes for further processing if needed
-        # Use filtered DataFrame from above debug steps
-        bw_photo_stakes = step4.copy()
-
-        print(f"[BWPhotoStakesProcessor] Eligible orders found: {len(bw_photo_stakes)}")
-        print(f"[BWPhotoStakesProcessor] Filtered columns: {list(bw_photo_stakes.columns)}")
-        if bw_photo_stakes.empty:
-            print(f"[BWPhotoStakesProcessor] WARNING: No eligible B&W photo stakes found. DataFrame columns: {list(df.columns)}")
-            print(f"[BWPhotoStakesProcessor] DataFrame head:\n{df.head().to_string()}")
+        # Initial filtering removed. The input df is assumed to be pre-filtered.
+        # This processor specifically requires 'image_path' to be valid.
+        if 'image_path' not in df.columns:
+            print(f"[BWPhotoStakesProcessor] ERROR: 'image_path' column missing. Cannot process.")
             return
+
+        df_to_process = df[df['image_path'].notna() & (df['image_path'].astype(str).str.strip() != '')].copy()
+
+        print(f"[BWPhotoStakesProcessor] Eligible orders found after image_path validation: {len(df_to_process)}")
+
+        if df_to_process.empty:
+            print(f"[BWPhotoStakesProcessor] WARNING: No eligible B&W photo stakes after image_path validation. Original DataFrame columns: {list(df.columns)}")
+            # print(f"[BWPhotoStakesProcessor] Original DataFrame head:\n{df.head().to_string()}") # Could be large
+            return
+
+        # Row expansion logic would go here if needed for this processor. Currently, none is implemented.
+
         # Process in batches of 3 (top row)
         batch_num = 1
-        for start_idx in range(0, len(bw_photo_stakes), 3):
-            batch_orders = bw_photo_stakes.iloc[start_idx:start_idx + 3]
+        for start_idx in range(0, len(df_to_process), 3): # Use df_to_process
+            batch_orders = df_to_process.iloc[start_idx:start_idx + 3]
             if not batch_orders.empty:
         
                 self.create_memorial_svg(batch_orders.to_dict('records'), batch_num)

@@ -36,15 +36,32 @@ class ColouredLargeStakesProcessor(MemorialBase):
         self.memorial_spacing_y_px = 453.10
 
     def process_orders(self, df):
-        # Filter for coloured large stakes
-        filtered = df[
-            (df['TYPE'].str.contains('Large Stake', case=False, na=False)) &
-            (df['COLOUR'].str.lower().isin(['copper', 'gold', 'silver']))
-        ].copy()
+        # Input `df` is assumed to be pre-filtered for this processor's category.
+        # Normalize column names (often done in MemorialBase or should be first step)
+        df.columns = [col.upper().strip() for col in df.columns] # Assuming this processor expects uppercase
+
+        # Ensure essential columns exist and perform type conversions if needed
+        # Example: (ensure these match expected case from processor logic)
+        if 'TYPE' in df.columns:
+            df['TYPE'] = df['TYPE'].astype(str).str.strip() # No .lower() if expecting specific case
+        else:
+            df['TYPE'] = ''
+        if 'COLOUR' in df.columns:
+            df['COLOUR'] = df['COLOUR'].astype(str).str.strip() # No .lower()
+        else:
+            df['COLOUR'] = ''
+        # Add other necessary columns if they might be missing and are used later
+
+        # The original filtering logic is removed. df is now df_to_process.
+        df_to_process = df
+
+        if df_to_process.empty:
+            print(f"No eligible orders for {self.CATEGORY} processor.")
+            return
 
         batch_num = 1
-        for start_idx in range(0, len(filtered), self.batch_size):
-            batch_orders = filtered.iloc[start_idx:start_idx + self.batch_size]
+        for start_idx in range(0, len(df_to_process), self.batch_size):
+            batch_orders = df_to_process.iloc[start_idx:start_idx + self.batch_size]
             if not batch_orders.empty:
                 print(f"\nProcessing Coloured Large Stake batch {batch_num}...")
                 orders_dict = batch_orders.to_dict('records')
