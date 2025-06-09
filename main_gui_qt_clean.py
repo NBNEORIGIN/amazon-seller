@@ -817,12 +817,21 @@ class MainWindow(QMainWindow):
         self.process_button.setEnabled(False)
         self.process_button.clicked.connect(self.process_orders)
         left_layout.addWidget(self.process_button)
-        # Add Create SVGs button (combined)
-        self.create_svgs_button = QPushButton('Create SVGs')
+
+        # Create All SVGs button
+        self.create_svgs_button = QPushButton('Create All SVGs') # Renamed
         self.create_svgs_button.setFixedWidth(120)
         self.create_svgs_button.setEnabled(True)
         self.create_svgs_button.clicked.connect(self.create_all_svgs)
         left_layout.addWidget(self.create_svgs_button)
+
+        # Create SVGs for Current Tab button
+        self.create_current_tab_svgs_button = QPushButton('Create SVGs for Current Tab')
+        self.create_current_tab_svgs_button.setFixedWidth(200)
+        self.create_current_tab_svgs_button.setEnabled(True) # Initial state, can be updated in on_tab_changed
+        self.create_current_tab_svgs_button.clicked.connect(self.create_svgs_for_current_tab)
+        left_layout.addWidget(self.create_current_tab_svgs_button)
+
         # --- Move main action buttons to left pane only ---
         self.copy_button = QPushButton('Copy Table to Clipboard')
         self.copy_button.setEnabled(False)
@@ -952,6 +961,98 @@ class MainWindow(QMainWindow):
         # self.last_df = None # Replaced by categorized_dfs
         # Restore last state after all widgets are initialized
         self.load_state()
+
+    def create_svgs_for_current_tab(self):
+        current_tab_widget = self.tabs.currentWidget()
+        if not current_tab_widget:
+            self.log("No active tab selected to generate SVGs for.")
+            return
+
+        table_widget = current_tab_widget.findChild(QTableWidget)
+        if not table_widget:
+            self.log("No table widget found in the current tab.")
+            return
+
+        category_name = table_widget.property("category_name")
+        if not category_name:
+            self.log("Could not determine category for the current tab.")
+            return
+
+        self.log(f"Attempting to generate SVGs for category: {category_name}")
+
+        if category_name not in self.categorized_dfs or self.categorized_dfs[category_name].empty:
+            self.log(f"No data found for category '{category_name}'.")
+            return
+
+        skippable_categories = ['unclassified', 'metal_products_raw']
+        if category_name in skippable_categories:
+            self.log(f"SVG generation is not applicable for category: '{category_name}'.")
+            return
+
+        processor_class = self.processor_map.get(category_name)
+        if not processor_class:
+            self.log(f"No processor mapped for category: '{category_name}'. Cannot generate SVGs.")
+            return
+
+        try:
+            # Define paths (consistent with create_all_svgs)
+            app_dir = os.path.dirname(os.path.abspath(__file__))
+            graphics_path = os.path.join(app_dir, "assets", "graphics")
+            output_dir = os.path.join(app_dir, "SVG_OUTPUT")
+            os.makedirs(output_dir, exist_ok=True)
+            os.makedirs(graphics_path, exist_ok=True) # Ensure graphics path exists
+
+            category_df = self.categorized_dfs[category_name]
+            processor_instance = None
+
+            # Logic for instantiating template processors (mirrors create_all_svgs)
+            template_processor_class_names = [
+                "ColouredSmallStakesTemplateProcessor",
+                "BlackAndWhiteSmallStakesTemplateProcessor"
+            ]
+            processor_class_name_str = processor_class.__name__
+
+            if processor_class_name_str in template_processor_class_names:
+                template_file = ""
+                if category_name == "small_stakes_graphic_coloured":
+                    template_file = "small_colour.svg"
+                elif category_name == "small_stakes_graphic_bw":
+                    template_file = "small_bw.svg"
+                else:
+                    self.log(f"Warning: Template file not defined for template processor {processor_class_name_str} and category {category_name}.")
+                    return
+
+                template_base_path = os.path.join(app_dir, "assets", "002_svg_templates")
+                template_path = os.path.join(template_base_path, template_file)
+
+                if not os.path.exists(template_path):
+                    self.log(f"Error: Template file not found at {template_path} for processor {processor_class_name_str}.")
+                    return
+
+                self.log(f"Using template {template_path} for {processor_class_name_str}")
+                # Assuming template processors take graphics_path as 3rd arg
+                try:
+                    processor_instance = processor_class(template_path, output_dir, graphics_path)
+                except TypeError: # Fallback if graphics_path is not accepted
+                     processor_instance = processor_class(template_path, output_dir)
+            else:
+                processor_instance = processor_class(graphics_path, output_dir)
+
+            # Pass a copy of the DataFrame, with lowercase column names
+            df_copy = category_df.copy()
+            df_copy.columns = [col.lower() for col in df_copy.columns]
+
+            self.log(f"Processing {len(df_copy)} orders for category '{category_name}' with {processor_class_name_str}...")
+            processor_instance.process_orders(df_copy)
+            self.log(f"SVG generation complete for category: {category_name}.")
+
+            self.list_output_files(output_dir)
+            self.refresh_svg_thumbnails()
+
+        except Exception as e:
+            import traceback
+            self.log(f"Error during SVG generation for category '{category_name}': {e}\n{traceback.format_exc()}")
+
 
     def on_tab_changed(self, index):
         if index >= 0 and self.tabs.widget(index): # Check if widget exists
