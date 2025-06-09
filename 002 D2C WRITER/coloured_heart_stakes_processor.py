@@ -35,8 +35,8 @@ class ColouredHeartStakesProcessor(MemorialBase):
         self.memorial_height_mm = 89.826
 
         # Update pixel dimensions based on these specific mm values
-        self.memorial_width_px = int(self.memorial_width_mm * self.px_per_mm)
-        self.memorial_height_px = int(self.memorial_height_mm * self.px_per_mm)
+        # self.memorial_width_px = int(self.memorial_width_mm * self.px_per_mm) # To be removed
+        # self.memorial_height_px = int(self.memorial_height_mm * self.px_per_mm) # To be removed
 
         # Page layout for batches (e.g., 3 hearts per page, similar to template)
         # The template page size is 480mm x 330mm.
@@ -48,20 +48,19 @@ class ColouredHeartStakesProcessor(MemorialBase):
         # Override page dimensions if different from MemorialBase default or to match template
         self.page_width_mm = 480
         self.page_height_mm = 330 # As per template
-        self.page_width_px = int(self.page_width_mm * self.px_per_mm)
-        self.page_height_px = int(self.page_height_mm * self.px_per_mm)
+        # self.page_width_px = int(self.page_width_mm * self.px_per_mm) # To be removed
+        # self.page_height_px = int(self.page_height_mm * self.px_per_mm) # To be removed
 
-        # Recalculate x_offset_px and y_offset_px for centering this grid on the new page size
-        # Or, if placement is absolute (e.g., bottom-right), set offsets accordingly.
-        # For now, let's try centering the 3x1 grid.
+        # Offset calculations for bottom-right placement
+        margin_mm = 1.0
         grid_actual_width_mm = self.memorial_width_mm * self.grid_cols
         grid_actual_height_mm = self.memorial_height_mm * self.grid_rows
 
-        self.x_offset_mm = (self.page_width_mm - grid_actual_width_mm) / 2
-        self.y_offset_mm = (self.page_height_mm - grid_actual_height_mm) / 2 # Center vertically
+        self.x_offset_mm = self.page_width_mm - grid_actual_width_mm - margin_mm
+        self.y_offset_mm = self.page_height_mm - grid_actual_height_mm - margin_mm
 
-        self.x_offset_px = int(self.x_offset_mm * self.px_per_mm)
-        self.y_offset_px = int(self.y_offset_mm * self.px_per_mm)
+        # self.x_offset_px = int(self.x_offset_mm * self.px_per_mm) # To be removed
+        # self.y_offset_px = int(self.y_offset_mm * self.px_per_mm) # To be removed
 
         # Define font sizes (in points, will be converted to mm/px in drawing method)
         # These are examples, adjust based on visual testing.
@@ -160,86 +159,72 @@ class ColouredHeartStakesProcessor(MemorialBase):
 
         self.log(f"[{self.CATEGORY}] Creating SVG for batch {batch_num}, {len(orders_in_batch)} items.")
 
-        # Filename based on category, date_str from MemorialBase, and batch_num
-        # self.date_str should be initialized by MemorialBase's __init__
         svg_filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
         output_path = os.path.join(self.OUTPUT_DIR, svg_filename)
 
+        # Use mm for viewBox and size
         dwg = svgwrite.Drawing(
             filename=output_path,
             size=(f"{self.page_width_mm}mm", f"{self.page_height_mm}mm"),
-            viewBox=f"0 0 {self.page_width_px} {self.page_height_px}"
+            viewBox=f"0 0 {self.page_width_mm} {self.page_height_mm}"
         )
 
         for idx, order_dict in enumerate(orders_in_batch):
-            if idx >= self.batch_size: # self.batch_size is 3 (3x1 grid)
+            if idx >= self.batch_size:
                 break
 
-            # Calculate top-left (x, y) for the current heart stake in the batch
-            # Based on grid_cols = 3, grid_rows = 1 and centered offsets
-            item_x = self.x_offset_px + (idx % self.grid_cols) * self.memorial_width_px
-            item_y = self.y_offset_px + (idx // self.grid_cols) * self.memorial_height_px # idx // self.grid_cols will be 0 for a 3x1 grid
+            # Use mm for item positioning
+            item_x_mm = self.x_offset_mm + (idx % self.grid_cols) * self.memorial_width_mm
+            item_y_mm = self.y_offset_mm + (idx // self.grid_cols) * self.memorial_height_mm
 
-            # Create a group for this individual stake, translated to its position
-            stake_group = dwg.g(transform=f"translate({item_x}, {item_y})")
+            stake_group = dwg.g(transform=f"translate({item_x_mm}, {item_y_mm})")
 
-            # 1. Draw the Heart Path (cut line)
-            # HEART_PATH_D is already relative to the memorial_width_mm x memorial_height_mm bounding box top-left
             stake_group.add(dwg.path(
                 d=self.HEART_PATH_D,
                 stroke=svgwrite.rgb(255, 0, 0, '%'), # Red
-                fill='none', # Typically cut lines are not filled
-                stroke_width=0.1 * self.px_per_mm # Approx 0.1mm
+                fill='none',
+                stroke_width=0.1 # Interpreted as 0.1mm
             ))
 
-            # 3. Embed the Graphic
             graphic_filename = order_dict.get('graphic', '')
             if graphic_filename and isinstance(graphic_filename, str) and graphic_filename.strip():
                 graphic_full_path = os.path.join(self.graphics_path, graphic_filename.strip())
                 if os.path.exists(graphic_full_path):
-                    embedded_graphic_data = self.embed_image(graphic_full_path) # Method from MemorialBase
+                    embedded_graphic_data = self.embed_image(graphic_full_path)
                     if embedded_graphic_data:
-                        # Define graphic positioning and size within the heart
-                        # Example: Place in a central area, using graphic_rel_bbox from __init__
-                        gfx_x = self.memorial_width_px * self.graphic_rel_bbox[0]
-                        gfx_y = self.memorial_height_px * self.graphic_rel_bbox[1]
-                        gfx_width = self.memorial_width_px * self.graphic_rel_bbox[2]
-                        gfx_height = self.memorial_height_px * self.graphic_rel_bbox[3]
+                        gfx_x_mm = self.memorial_width_mm * self.graphic_rel_bbox[0]
+                        gfx_y_mm = self.memorial_height_mm * self.graphic_rel_bbox[1]
+                        gfx_width_mm = self.memorial_width_mm * self.graphic_rel_bbox[2]
+                        gfx_height_mm = self.memorial_height_mm * self.graphic_rel_bbox[3]
 
                         stake_group.add(dwg.image(
                             href=embedded_graphic_data,
-                            insert=(gfx_x, gfx_y),
-                            size=(gfx_width, gfx_height),
+                            insert=(gfx_x_mm, gfx_y_mm),
+                            size=(gfx_width_mm, gfx_height_mm), # Use mm
                             preserveAspectRatio='xMidYMid meet'
                         ))
                 else:
                     self.log(f"[{self.CATEGORY}] Graphic not found: {graphic_full_path} for order {order_dict.get('order-id')}")
 
-            # 4. Add Text Lines
             texts = {
                 'line_1': {'text': str(order_dict.get('line_1', '')), 'pt': self.line1_font_pt, 'rel_y': self.line1_rel_pos[1]},
                 'line_2': {'text': str(order_dict.get('line_2', '')), 'pt': self.line2_font_pt, 'rel_y': self.line2_rel_pos[1]},
                 'line_3': {'text': str(order_dict.get('line_3', '')), 'pt': self.line3_font_pt, 'rel_y': self.line3_rel_pos[1]},
             }
 
-            text_center_x_px = self.memorial_width_px * 0.5 # Centered horizontally in the stake group
+            text_center_x_mm = self.memorial_width_mm * 0.5
 
             for key, val in texts.items():
                 if val['text'].strip():
-                    # Check grammar and typos
-                    # check_grammar_and_typos(val['text']) # Assuming this modifies in place or returns corrected, for now, just call
-
+                    check_grammar_and_typos(val['text'])
                     font_size_mm = val['pt'] * self.pt_to_mm
-                    abs_y_px = self.memorial_height_px * val['rel_y']
+                    abs_y_mm = self.memorial_height_mm * val['rel_y']
 
-                    # Estimate max_chars_per_line: This is a rough guide.
-                    # A more accurate way would be to measure text width, but that's complex in svgwrite.
-                    # For hearts, the text area is often constrained by the shape.
-                    # Let's use a value that might be suitable for the narrower parts of a heart.
-                    char_width_estimate_px = font_size_mm * self.px_per_mm * 0.5 # Heuristic
-                    # Max width for text might be ~60-70% of memorial_width_px for a heart
-                    effective_text_width_px = self.memorial_width_px * 0.6
-                    max_chars_per_line = int(effective_text_width_px / char_width_estimate_px) if char_width_estimate_px > 0 else 20
+                    # Estimate max_chars using mm dimensions (more intuitive)
+                    # Approx char width in mm: font_size_mm * 0.5 or 0.6
+                    char_width_estimate_mm = font_size_mm * 0.5
+                    effective_text_width_mm = self.memorial_width_mm * 0.7 # Allow text to use 70% of heart width
+                    max_chars_per_line = int(effective_text_width_mm / char_width_estimate_mm) if char_width_estimate_mm > 0 else 25
 
 
                     processed_lines = []
@@ -250,26 +235,32 @@ class ColouredHeartStakesProcessor(MemorialBase):
                                 processed_lines.extend(wrapped)
 
                     num_lines = len(processed_lines)
-                    line_height_px = font_size_mm * self.px_per_mm * 1.2
+                    line_height_mm = font_size_mm * 1.2 # 1.2em line spacing in mm
 
-                    block_start_y = abs_y_px - ( (num_lines -1) * line_height_px / 2 )
+                    block_start_y_mm = abs_y_mm - ((num_lines - 1) * line_height_mm / 2)
 
                     text_element = dwg.text("",
-                        insert=(text_center_x_px, block_start_y),
+                        insert=(text_center_x_mm, block_start_y_mm),
                         font_family="Georgia",
-                        font_size=f"{font_size_mm}mm",
+                        font_size=f"{font_size_mm}mm", # Explicitly use mm
                         fill="black",
                         text_anchor="middle"
                     )
                     for line_idx, line_content in enumerate(processed_lines):
-                        dy = "1.2em" if line_idx > 0 else "0"
-                        tspan = dwg.tspan(line_content.strip(), x=[text_center_x_px], dy=[dy])
+                        # dy for tspan can be in 'em' or absolute units like 'mm'
+                        # Using 'em' is generally better for multi-line text within a text block
+                        dy_val = "1.2em" if line_idx > 0 else "0"
+                        tspan = dwg.tspan(line_content.strip(), x=[text_center_x_mm], dy=[dy_val])
                         text_element.add(tspan)
                     stake_group.add(text_element)
 
             dwg.add(stake_group)
 
-        self.add_reference_point(dwg)
+        # Add reference point using mm
+        ref_size_mm = 0.1
+        ref_x_mm = self.page_width_mm - ref_size_mm
+        ref_y_mm = self.page_height_mm - ref_size_mm
+        dwg.add(dwg.rect(insert=(ref_x_mm, ref_y_mm), size=(ref_size_mm, ref_size_mm), fill='blue'))
 
         try:
             dwg.save()
@@ -383,3 +374,4 @@ if __name__ == '__main__':
     # print(f"Page size: {processor.page_width_mm}mm x {processor.page_height_mm}mm")
     # print(f"Grid: {processor.grid_cols}x{processor.grid_rows}")
     # print(f"Offsets: x={processor.x_offset_mm}mm, y={processor.y_offset_mm}mm")
+```
