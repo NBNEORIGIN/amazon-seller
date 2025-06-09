@@ -374,4 +374,3 @@ if __name__ == '__main__':
     # print(f"Page size: {processor.page_width_mm}mm x {processor.page_height_mm}mm")
     # print(f"Grid: {processor.grid_cols}x{processor.grid_rows}")
     # print(f"Offsets: x={processor.x_offset_mm}mm, y={processor.y_offset_mm}mm")
-```
