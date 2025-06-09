@@ -322,7 +322,104 @@ class PhotoStakesProcessor(MemorialBase):
                 if not batch_orders.empty:
                     print(f"\n[DEBUG] Processing Photo batch {batch_num}...")
                     self.create_memorial_svg(batch_orders, batch_num)
+                    # Add call to create_batch_csv
+                    orders_dict_for_csv = batch_orders.to_dict('records')
+                    self.create_batch_csv(orders_dict_for_csv, batch_num, self.CATEGORY)
                     batch_num += 1
             # --- END WINDSURF PATCH ---
         except Exception as e:
             print(f"process_orders encountered an error: {e}")
+
+    def create_batch_csv(self, orders_in_batch, batch_num, category_name):
+        """Create CSV file for the batch with specified category prefix and timestamp."""
+        if not isinstance(orders_in_batch, list) or not orders_in_batch:
+            print(f"No orders in batch {batch_num} for category {category_name} to create CSV.")
+            return
+
+        # Ensure self.date_str is initialized (should be by MemorialBase)
+        # If not, use current date as fallback for safety, though this indicates an issue with init.
+        current_date_str = getattr(self, 'date_str', pd.Timestamp.now().strftime('%Y%m%d'))
+
+        svg_reference_filename = f"{category_name}_{current_date_str}_{batch_num:03d}.svg"
+        csv_filename = f"{category_name}_{current_date_str}_{batch_num:03d}.csv"
+        design_file_ref = f"{category_name}_{current_date_str}_{batch_num:03d}"
+
+        filepath = os.path.join(self.OUTPUT_DIR, csv_filename)
+
+        all_keys = set()
+        for order_dict in orders_in_batch:
+            all_keys.update([str(k).upper() for k in order_dict.keys()])
+
+        preferred_columns = [
+            'SVG FILE', 'DESIGN FILE', 'ORDER-ID', 'ORDER-ITEM-ID', 'SKU',
+            'NUMBER-OF-ITEMS', 'TYPE', 'COLOUR', 'GRAPHIC',
+            'LINE_1', 'LINE_2', 'LINE_3', 'IMAGE_PATH', 'THEME',
+            'ATTENTION_FLAG', 'WARNINGS'
+        ]
+
+        # Ensure preferred columns are uppercase for matching with all_keys
+        preferred_columns_upper = [col.upper() for col in preferred_columns]
+
+        extra_columns = sorted(list(all_keys - set(preferred_columns_upper)))
+        final_columns = preferred_columns_upper + extra_columns # Keep preferred order, add extras
+
+        data_for_csv = []
+        for order_dict in orders_in_batch:
+            row_dict = {}
+            row_dict['SVG FILE'] = svg_reference_filename
+            row_dict['DESIGN FILE'] = design_file_ref
+
+            # Populate ATTENTION_FLAG
+            attention_messages = []
+            order_colour_lower = str(order_dict.get('colour', order_dict.get('COLOUR', ''))).lower()
+            if order_colour_lower in ['marble', 'stone']: # Example rare colours
+                attention_messages.append(f"RARE_COLOUR: {order_colour_lower.upper()}")
+
+            # Add any other photo-specific attention flags if necessary
+            # e.g., if a specific 'type' of photo product needs attention
+            # order_type_lower = str(order_dict.get('type', order_dict.get('TYPE', ''))).lower()
+            # if order_type_lower == 'special_photo_type':
+            # attention_messages.append(f"TYPE: {order_type_lower.upper()}")
+
+            row_dict['ATTENTION_FLAG'] = "; ".join(attention_messages)
+
+            # Populate WARNINGS using MemorialBase static method
+            # Ensure order_dict keys match what generate_warnings expects (likely lowercase)
+            # Create a temporary lowercase key dict for generate_warnings if needed
+            order_dict_lower_keys = {k.lower(): v for k, v in order_dict.items()}
+            row_dict['WARNINGS'] = MemorialBase.generate_warnings(order_dict_lower_keys)
+
+            # Populate other columns
+            for col_header_upper in final_columns:
+                if col_header_upper not in row_dict: # Avoid overwriting SVG FILE, DESIGN FILE, etc.
+                    # Try to get value using various casings from original order_dict
+                    val = order_dict.get(col_header_upper,
+                          order_dict.get(col_header_upper.lower(),
+                          order_dict.get(col_header_upper.title(),
+                          order_dict.get(col_header_upper.replace('_', '-'), # Handle order-id vs order_id
+                          order_dict.get(col_header_upper.replace('-', '_'), '')))))
+                    row_dict[col_header_upper] = val
+
+            data_for_csv.append(row_dict)
+
+        if not data_for_csv:
+            print(f"No data to write for CSV batch {batch_num} of category {category_name}.")
+            return
+
+        df_csv = pd.DataFrame(data_for_csv)
+
+        # Ensure all preferred columns exist in the DataFrame, add if missing
+        for col_pref_upper in preferred_columns_upper:
+            if col_pref_upper not in df_csv.columns:
+                df_csv[col_pref_upper] = '' # Add as empty if missing
+
+        # Reorder DataFrame columns to match final_columns (preferred first, then others)
+        # Filter final_columns to only those present in df_csv to avoid KeyErrors
+        existing_final_columns = [col for col in final_columns if col in df_csv.columns]
+        df_csv = df_csv[existing_final_columns]
+
+        try:
+            df_csv.to_csv(filepath, index=False, encoding="utf-8-sig")
+            print(f"Generated CSV: {filepath}")
+        except Exception as e:
+            print(f"Error writing CSV {filepath}: {e}")
