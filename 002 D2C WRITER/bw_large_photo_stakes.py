@@ -327,59 +327,60 @@ class BWLargePhotoStakesProcessor(MemorialBase):
             # If photo_path exists but is empty, and image_path exists, fill missing photo_path with image_path
             if 'image_path' in df.columns:
                 df['photo_path'] = df['photo_path'].combine_first(df['image_path'])
+
         # Filter for B&W large photo stakes
-    # --- Start Diagnostic Logging for Order 203-1227886-3288363 ---
-    target_order_id = '203-1227886-3288363'
-    # Ensure 'order-id' column exists before trying to filter
-    if 'order-id' in df.columns:
-        target_order_df = df[df['order-id'] == target_order_id]
+        # --- Start Diagnostic Logging for Order 203-1227886-3288363 ---
+        target_order_id = '203-1227886-3288363'
+        # Ensure 'order-id' column exists before trying to filter
+        if 'order-id' in df.columns:
+            target_order_df = df[df['order-id'] == target_order_id]
 
-        if not target_order_df.empty:
-            print(f"\n[DIAGNOSTIC] Data for order {target_order_id} BEFORE filtering in BWLargePhotoStakesProcessor:")
-            target_order_data = target_order_df.iloc[0].to_dict() # Convert Series to dict
-            for key, value in target_order_data.items():
-                print(f"  {key}: '{value}' (type: {type(value)})" )
+            if not target_order_df.empty:
+                print(f"\n[DIAGNOSTIC] Data for order {target_order_id} BEFORE filtering in BWLargePhotoStakesProcessor:")
+                target_order_data = target_order_df.iloc[0].to_dict() # Convert Series to dict
+                for key, value in target_order_data.items():
+                    print(f"  {key}: '{value}' (type: {type(value)})" )
 
-            print(f"\n[DIAGNOSTIC] Filter conditions for order {target_order_id} in BWLargePhotoStakesProcessor:")
+                print(f"\n[DIAGNOSTIC] Filter conditions for order {target_order_id} in BWLargePhotoStakesProcessor:")
 
-            # Condition 1: Colour
-            cond1_colour_val = str(target_order_data.get('colour', '')).lower() # Ensure string for .lower()
-            cond1_met = (cond1_colour_val == 'black')
-            print(f"  1. df['colour'].str.lower() == 'black': Applied as ('{cond1_colour_val}' == 'black') -> {cond1_met}")
+                # Condition 1: Colour
+                cond1_colour_val = str(target_order_data.get('colour', '')).lower() # Ensure string for .lower()
+                cond1_met = (cond1_colour_val == 'black')
+                print(f"  1. df['colour'].str.lower() == 'black': Applied as ('{cond1_colour_val}' == 'black') -> {cond1_met}")
 
-            # Condition 2: Type
-            cond2_type_val = str(target_order_data.get('type', '')) # Ensure string for .lower()
-            cond2_type_contains_large_stake = False
-            if pd.notna(cond2_type_val): # Check if Series first, then apply .str methods
-                 cond2_type_contains_large_stake = 'large stake' in cond2_type_val.lower()
-            cond2_met = cond2_type_contains_large_stake
-            print(f"  2. df['type'].str.contains('large stake', case=False, na=False): Applied as ('{cond2_type_val}'.lower() contains 'large stake') -> {cond2_met}")
+                # Condition 2: Type
+                cond2_type_val = str(target_order_data.get('type', '')) # Ensure string for .lower()
+                cond2_type_contains_large_stake = False
+                if pd.notna(cond2_type_val): # Check if Series first, then apply .str methods
+                     cond2_type_contains_large_stake = 'large stake' in cond2_type_val.lower()
+                cond2_met = cond2_type_contains_large_stake
+                print(f"  2. df['type'].str.contains('large stake', case=False, na=False): Applied as ('{cond2_type_val}'.lower() contains 'large stake') -> {cond2_met}")
 
-            # Condition 3: DecorationType
-            cond3_deco_val = str(target_order_data.get('decorationtype', '')).lower() # Ensure string for .lower()
-            cond3_met = (cond3_deco_val == 'photo')
-            print(f"  3. df['decorationtype'].str.lower() == 'photo': Applied as ('{cond3_deco_val}' == 'photo') -> {cond3_met}")
+                # Condition 3: DecorationType
+                cond3_deco_val = str(target_order_data.get('decorationtype', '')).lower() # Ensure string for .lower()
+                cond3_met = (cond3_deco_val == 'photo')
+                print(f"  3. df['decorationtype'].str.lower() == 'photo': Applied as ('{cond3_deco_val}' == 'photo') -> {cond3_met}")
 
-            # Condition 4: Photo Path
-            cond4_path_val = target_order_data.get('photo_path', None)
-            cond4_path_notna = pd.notna(cond4_path_val)
-            cond4_path_notempty = False
-            if cond4_path_notna and isinstance(cond4_path_val, str): # Check type before .strip()
-                cond4_path_notempty = cond4_path_val.strip() != ''
-            elif cond4_path_notna: # Not a string but notna (e.g. if it was a number by mistake)
-                 cond4_path_notempty = True
+                # Condition 4: Photo Path
+                cond4_path_val = target_order_data.get('photo_path', None)
+                cond4_path_notna = pd.notna(cond4_path_val)
+                cond4_path_notempty = False
+                if cond4_path_notna and isinstance(cond4_path_val, str): # Check type before .strip()
+                    cond4_path_notempty = cond4_path_val.strip() != ''
+                elif cond4_path_notna: # Not a string but notna (e.g. if it was a number by mistake)
+                     cond4_path_notempty = True
 
-            cond4_met = cond4_path_notna and cond4_path_notempty
-            print(f"  4. df['photo_path'].notna() AND df['photo_path'] != '': Value '{cond4_path_val}' -> notna={cond4_path_notna}, notempty_if_str_or_true_if_not_str={cond4_path_notempty} -> {cond4_met}")
+                cond4_met = cond4_path_notna and cond4_path_notempty
+                print(f"  4. df['photo_path'].notna() AND df['photo_path'] != '': Value '{cond4_path_val}' -> notna={cond4_path_notna}, notempty_if_str_or_true_if_not_str={cond4_path_notempty} -> {cond4_met}")
 
-            overall_should_be_eligible = cond1_met and cond2_met and cond3_met and cond4_met
-            print(f"  Overall, should this order be eligible based on individual checks? {overall_should_be_eligible}\n")
+                overall_should_be_eligible = cond1_met and cond2_met and cond3_met and cond4_met
+                print(f"  Overall, should this order be eligible based on individual checks? {overall_should_be_eligible}\n")
 
+            else:
+                print(f"\n[DIAGNOSTIC] Order {target_order_id} not found in DataFrame in BWLargePhotoStakesProcessor prior to its specific filtering.\n")
         else:
-            print(f"\n[DIAGNOSTIC] Order {target_order_id} not found in DataFrame in BWLargePhotoStakesProcessor prior to its specific filtering.\n")
-    else:
-        print(f"\n[DIAGNOSTIC] 'order-id' column not found in DataFrame in BWLargePhotoStakesProcessor. Cannot check for target_order_id.\n")
-    # --- End Diagnostic Logging ---
+            print(f"\n[DIAGNOSTIC] 'order-id' column not found in DataFrame in BWLargePhotoStakesProcessor. Cannot check for target_order_id.\n")
+        # --- End Diagnostic Logging ---
         large_photo_stakes = df[
             (df['colour'].str.lower() == 'black') & 
             (df['type'].str.contains('large stake', case=False, na=False)) &
