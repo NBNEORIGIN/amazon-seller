@@ -155,19 +155,19 @@ class BWLargePhotoStakesProcessor(MemorialBase):
         line1_lines = split_line_to_fit(line1_text, self.text_wrap_chars)
         # Adjust y for line1 based on its content, e.g., start 20% down the photo height
         y_pos_l1 = line_y_start_abs + (self.photo_height_px * 0.2)
-        dwg.add(add_multiline_text(dwg, line1_lines, insert=(text_center_x_abs, y_pos_l1), font_size=f"{self.line1_size_pt * self.pt_to_mm}mm", font_family="Georgia", anchor="middle", fill="black", line_spacing_factor=1.3))
+        dwg.add(add_multiline_text(dwg, line1_lines, insert=(text_center_x_abs, y_pos_l1), font_size=f"{self.line1_size_pt * self.pt_to_mm}mm", font_family="Georgia", anchor="middle", fill="black"))
 
         # Line 2 (center of photo height)
         line2_text = str(order.get('line_2', ''))
         line2_lines = split_line_to_fit(line2_text, self.text_wrap_chars)
         y_pos_l2 = line_y_start_abs + (self.photo_height_px * 0.5)
-        dwg.add(add_multiline_text(dwg, line2_lines, insert=(text_center_x_abs, y_pos_l2), font_size=f"{self.line2_size_pt * self.pt_to_mm}mm", font_family="Georgia", anchor="middle", fill="black", line_spacing_factor=1.3))
+        dwg.add(add_multiline_text(dwg, line2_lines, insert=(text_center_x_abs, y_pos_l2), font_size=f"{self.line2_size_pt * self.pt_to_mm}mm", font_family="Georgia", anchor="middle", fill="black"))
 
         # Line 3 (e.g., 80% down the photo height)
         line3_text = str(order.get('line_3', ''))
         line3_lines = split_line_to_fit(line3_text, self.text_wrap_chars)
         y_pos_l3 = line_y_start_abs + (self.photo_height_px * 0.8)
-        dwg.add(add_multiline_text(dwg, line3_lines, insert=(text_center_x_abs, y_pos_l3), font_size=f"{self.line3_size_pt * self.pt_to_mm}mm", font_family="Georgia", anchor="middle", fill="black", line_spacing_factor=1.3))
+        dwg.add(add_multiline_text(dwg, line3_lines, insert=(text_center_x_abs, y_pos_l3), font_size=f"{self.line3_size_pt * self.pt_to_mm}mm", font_family="Georgia", anchor="middle", fill="black"))
 
     def create_memorial_svg(self, orders_in_batch_dicts, batch_num):
         # orders_in_batch_dicts is a list of order dictionaries
