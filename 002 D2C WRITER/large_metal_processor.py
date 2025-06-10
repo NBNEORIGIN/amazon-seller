@@ -9,8 +9,21 @@ from core.processors.text_utils import split_line_to_fit, check_grammar_and_typo
 from core.processors.svg_utils import add_multiline_text
 
 class LargeMetalProcessor(ColouredSmallStakesTemplateProcessor):
-    def __init__(self, template_path, output_dir, graphics_path=None):
-        super().__init__(template_path, output_dir, graphics_path)
+    def __init__(self, first_arg_from_gui, output_dir_from_gui, graphics_path_from_gui_if_provided=None):
+        # This processor is called by GUI like: LargeMetalProcessor(graphics_path, output_dir)
+        # when the category is not one of ["small_stakes_graphic_coloured", "small_stakes_graphic_bw"].
+        # So, first_arg_from_gui receives the graphics_path value from the GUI.
+        # output_dir_from_gui receives the output_dir value from the GUI.
+
+        actual_graphics_path = first_arg_from_gui
+        actual_output_dir = output_dir_from_gui
+
+        # Call parent with template_path=None, and correctly mapped output_dir and graphics_path
+        super().__init__(template_path=None,
+                         output_dir=actual_output_dir,
+                         graphics_path=actual_graphics_path)
+
+        # Original batch_size logic for LargeMetalProcessor:
         # mem_w = 127, mem_h = 76.2
         # page_w = 480, page_h = 290
         # grid_cols = 480 // 127 = 3
