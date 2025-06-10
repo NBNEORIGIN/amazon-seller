@@ -1,6 +1,6 @@
 ﻿SKU,COLOUR,TYPE,DecorationType,Theme,ProcessorCategory
-OC062001_L_US,Brass,Large Metal,,,unclassified
-OC062005_L_US,Aluminium,Large Metal,Graphic,,unclassified
+OC062001_L_US,Brass,Large Metal,,,large_metal_graphic
+OC062005_L_US,Aluminium,Large Metal,Graphic,,large_metal_graphic
 OD042004,Silver,Regular Stake,Graphic,Pet,regular_stakes_graphic_coloured
 OD042004UKPhoto,Gold,Regular Stake,Photo,Pet,regular_stakes_photo_coloured
 OD042005Silver,Silver,Regular Stake,Graphic,Pet,regular_stakes_graphic_coloured
