@@ -42,6 +42,7 @@ from coloured_large_photo_stakes import ColouredLargePhotoStakesProcessor
 from bw_photo_stakes import BWPhotoStakesProcessor
 from coloured_small_stakes_template_processor import ColouredSmallStakesTemplateProcessor
 from coloured_large_stakes import ColouredLargeStakesProcessor
+from bw_large_photo_stakes import BWLargePhotoStakesProcessor
 from bw_small_stakes_template_processor import BlackAndWhiteSmallStakesTemplateProcessor # Added this import
 from coloured_heart_stakes_processor import ColouredHeartStakesProcessor # Added this import
 from large_metal_processor import LargeMetalProcessor
@@ -795,7 +796,7 @@ class MainWindow(QMainWindow):
             "large_stakes_graphic_coloured": ColouredLargeStakesProcessor,
             "large_stakes_graphic_bw": BWLargeStakesProcessor,
             "large_stakes_photo_coloured": ColouredLargePhotoStakesProcessor,
-            # "large_stakes_photo_bw": BWPhotoStakesProcessor, # Removed as BWPhotoStakesProcessor is for regular stakes. No specific processor for large B&W photo.
+            "large_stakes_photo_bw": BWLargePhotoStakesProcessor,
             "small_stakes_graphic_coloured": ColouredSmallStakesTemplateProcessor,
             "small_stakes_graphic_bw": BlackAndWhiteSmallStakesTemplateProcessor,
             "heart_stakes_graphic_coloured": ColouredHeartStakesProcessor, # Added new processor
