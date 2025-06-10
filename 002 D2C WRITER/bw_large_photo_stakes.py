@@ -92,7 +92,7 @@ class BWLargePhotoStakesProcessor(MemorialBase):
 
         is_om008016bw = (str(order.get('sku', '')).strip().upper() == 'OM008016BW')
 
-        if is_om008016bw and self.d_clip_ellipse_om008016bw and self.d_border_om008016bw:
+        if is_om008016bw: # Changed top-level condition
             # Specific logic for OM008016BW
             om_slot_group = dwg.g(transform=f"translate({x},{y})") # Slot position in pixels
 
@@ -104,34 +104,45 @@ class BWLargePhotoStakesProcessor(MemorialBase):
 
             if dwg.defs is None: dwg.defs = dwg.g()
 
-            existing_clip_path = None
-            # Check if clip_path_id already exists in defs to prevent duplicates
-            if dwg.defs.elements:
-                for el_val in dwg.defs.elements: # Simpler loop, no need for el_idx
-                    if hasattr(el_val, 'attribs') and el_val.attribs.get('id') == clip_path_id:
-                        existing_clip_path = el_val
-                        break
+            # Check if d_clip_ellipse_om008016bw is available before attempting to define clipPath
+            if self.d_clip_ellipse_om008016bw:
+                existing_clip_path = None
+                if dwg.defs.elements: # Check if clip_path_id already exists in defs
+                    for el_val in dwg.defs.elements:
+                        if hasattr(el_val, 'attribs') and el_val.attribs.get('id') == clip_path_id:
+                            existing_clip_path = el_val
+                            break
 
-            if not existing_clip_path:
-                 # Apply scale transform directly to the clipPath element
-                 clip_path_element = dwg.clipPath(id=clip_path_id, transform=f"scale({self.px_per_mm})")
-
-                 # Create the path with its own translate transform
-                 # (transform_g1_template_units_str was defined earlier in the original code)
-                 path_for_clip = dwg.path(d=self.d_clip_ellipse_om008016bw, transform=transform_g1_template_units_str)
-
-                 # Add the path directly to the clipPath element
-                 clip_path_element.add(path_for_clip)
-                 dwg.defs.add(clip_path_element)
+                if not existing_clip_path:
+                     clip_path_element = dwg.clipPath(id=clip_path_id, transform=f"scale({self.px_per_mm})")
+                     path_for_clip = dwg.path(d=self.d_clip_ellipse_om008016bw, transform=transform_g1_template_units_str)
+                     clip_path_element.add(path_for_clip)
+                     dwg.defs.add(clip_path_element)
+            else:
+                print(f"WARNING: OM008016BW clip path data (d_clip_ellipse_om008016bw) is missing for SKU {order.get('sku', 'N/A')}. Skipping clip path definition for photo.")
 
             template_content_group = om_slot_group.add(dwg.g(transform=f"scale({self.px_per_mm})"))
-            template_content_group.add(dwg.path(d=self.d_border_om008016bw, style="fill:#000000;stroke:none;", transform=transform_g1_template_units_str))
 
-            photo_path_str = str(order.get('photo_path', ''))
+            if self.d_border_om008016bw: # Check if path data is non-empty
+                template_content_group.add(dwg.path(d=self.d_border_om008016bw, style="fill:#000000;stroke:none;", transform=transform_g1_template_units_str))
+            else:
+                print(f"WARNING: OM008016BW border path data (d_border_om008016bw) is missing for SKU {order.get('sku', 'N/A')}. Skipping border path drawing.")
+
+            photo_path_str = str(order.get('photo_path', '')).strip() # Ensure stripped
+            actual_photo_path = "" # Initialize
             if photo_path_str and not pd.isna(photo_path_str):
-                actual_photo_path = photo_path_str
-                if not os.path.isabs(photo_path_str):
+                if os.path.isabs(photo_path_str):
+                    actual_photo_path = photo_path_str
+                elif photo_path_str.lower().startswith("images/") or photo_path_str.lower().startswith("images\\"):
+                    # Path is like "images/filename.jpg", assume relative to project root
+                    actual_photo_path = os.path.normpath(photo_path_str)
+                elif self.graphics_path:
+                    # Path is a filename only, join with self.graphics_path
                     actual_photo_path = os.path.join(self.graphics_path, photo_path_str.replace('\\', os.sep))
+                else:
+                    # No absolute path, not starting with "images/", and no self.graphics_path defined
+                    actual_photo_path = photo_path_str # Use as is, may not be found
+
                 if os.path.exists(actual_photo_path):
                     photo_data = self.embed_image(actual_photo_path)
                     if photo_data:
