@@ -102,18 +102,26 @@ class BWLargePhotoStakesProcessor(MemorialBase):
             ty_g1_mm = -86.4915987
             transform_g1_template_units_str = f"translate({tx_g1_mm},{ty_g1_mm})"
 
-            clip_path_def_content_group = dwg.g(transform=f"scale({self.px_per_mm})")
-            clip_path_def_content_group.add(dwg.path(d=self.d_clip_ellipse_om008016bw, transform=transform_g1_template_units_str))
-
             if dwg.defs is None: dwg.defs = dwg.g()
 
             existing_clip_path = None
+            # Check if clip_path_id already exists in defs to prevent duplicates
             if dwg.defs.elements:
-                for el_idx, el_val in enumerate(dwg.defs.elements):
-                    if el_val.attribs.get('id') == clip_path_id: existing_clip_path = el_val; break
+                for el_val in dwg.defs.elements: # Simpler loop, no need for el_idx
+                    if hasattr(el_val, 'attribs') and el_val.attribs.get('id') == clip_path_id:
+                        existing_clip_path = el_val
+                        break
+
             if not existing_clip_path:
-                 clip_path_element = dwg.clipPath(id=clip_path_id)
-                 clip_path_element.add(clip_path_def_content_group)
+                 # Apply scale transform directly to the clipPath element
+                 clip_path_element = dwg.clipPath(id=clip_path_id, transform=f"scale({self.px_per_mm})")
+
+                 # Create the path with its own translate transform
+                 # (transform_g1_template_units_str was defined earlier in the original code)
+                 path_for_clip = dwg.path(d=self.d_clip_ellipse_om008016bw, transform=transform_g1_template_units_str)
+
+                 # Add the path directly to the clipPath element
+                 clip_path_element.add(path_for_clip)
                  dwg.defs.add(clip_path_element)
 
             template_content_group = om_slot_group.add(dwg.g(transform=f"scale({self.px_per_mm})"))
