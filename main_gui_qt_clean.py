@@ -45,6 +45,9 @@ from coloured_large_stakes import ColouredLargeStakesProcessor
 from bw_small_stakes_template_processor import BlackAndWhiteSmallStakesTemplateProcessor # Added this import
 from coloured_heart_stakes_processor import ColouredHeartStakesProcessor # Added this import
 from large_metal_processor import LargeMetalProcessor
+from xl_metal_processor import XLMetalProcessor
+from medium_metal_processor import MediumMetalProcessor
+from small_metal_processor import SmallMetalProcessor
 
 class DropZone(QLabel):
     file_dropped = pyqtSignal(list)  # Signal to emit list of file paths
@@ -797,6 +800,9 @@ class MainWindow(QMainWindow):
             "small_stakes_graphic_bw": BlackAndWhiteSmallStakesTemplateProcessor,
             "heart_stakes_graphic_coloured": ColouredHeartStakesProcessor, # Added new processor
             "large_metal_graphic": LargeMetalProcessor,
+            "xl_metal_graphic": XLMetalProcessor,
+            "medium_metal_graphic": MediumMetalProcessor,
+            "small_metal_graphic": SmallMetalProcessor,
             # 'unclassified' and 'metal_products_raw' will be skipped by default in create_all_svgs
         }
 

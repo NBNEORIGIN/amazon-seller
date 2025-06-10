@@ -2,201 +2,29 @@ import os
 import base64
 import pandas as pd
 import svgwrite
-from coloured_small_stakes_template_processor import ColouredSmallStakesTemplateProcessor
+# from coloured_small_stakes_template_processor import ColouredSmallStakesTemplateProcessor
+from base_metal_processor import BaseMetalProcessor # Added import
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.processors.text_utils import split_line_to_fit, check_grammar_and_typos
 from core.processors.svg_utils import add_multiline_text
 
-class LargeMetalProcessor(ColouredSmallStakesTemplateProcessor):
+class LargeMetalProcessor(BaseMetalProcessor): # Changed parent class
     def __init__(self, first_arg_from_gui, output_dir_from_gui, graphics_path_from_gui_if_provided=None):
-        # This processor is called by GUI like: LargeMetalProcessor(graphics_path, output_dir)
-        # when the category is not one of ["small_stakes_graphic_coloured", "small_stakes_graphic_bw"].
-        # So, first_arg_from_gui receives the graphics_path value from the GUI.
-        # output_dir_from_gui receives the output_dir value from the GUI.
-
+        # first_arg_from_gui is graphics_path when called by main_gui_qt_clean.py
         actual_graphics_path = first_arg_from_gui
         actual_output_dir = output_dir_from_gui
 
-        # Call parent with template_path=None, and correctly mapped output_dir and graphics_path
-        super().__init__(template_path=None,
-                         output_dir=actual_output_dir,
-                         graphics_path=actual_graphics_path)
-
-        # Original batch_size logic for LargeMetalProcessor:
-        # mem_w = 127, mem_h = 76.2
-        # page_w = 480, page_h = 290
-        # grid_cols = 480 // 127 = 3
-        # grid_rows = 290 // 76.2 = 3 (integer division)
-        # However, the original logic was to place them on the bottom row.
-        # Let's stick to a single row for now, as per original.
-        # grid_cols = 3, grid_rows = 1.
-        # batch_size = grid_cols * grid_rows
-        self.batch_size = 3 # 3 items fit in a row: 3 * 127 = 381mm, page width is 480mm
-
-    def process_orders(self, df):
-        df = df.copy()
-        df.columns = [col.lower() for col in df.columns]
-        df['type'] = df['type'].astype(str).str.strip().str.lower()
-        # No 'colour' column for large metal, remove if it was there
-        # df['colour'] = df['colour'].astype(str).str.strip().str.lower()
-        # Only large metal
-        filtered = df[df['type'] == 'large metal']
-        print('Filtered rows for Large Metal:', len(filtered))
-        batch_num = 1
-        for start_idx in range(0, len(filtered), self.batch_size):
-            batch_orders = filtered.iloc[start_idx:start_idx + self.batch_size]
-            if not batch_orders.empty:
-                svg_out_path = os.path.join(
-                    self.output_dir,
-                    f"large_metal_batch_{batch_num:03d}.svg"
-                )
-                self.populate_svg(batch_orders, svg_out_path)
-                # Output corresponding CSV file for this batch
-                csv_out_path = os.path.splitext(svg_out_path)[0] + ".csv"
-                batch_orders.to_csv(csv_out_path, index=False, encoding="utf-8-sig")
-                print(f"Wrote batch CSV: {csv_out_path}")
-                batch_num += 1
-
-    def populate_svg(self, batch_orders, output_svg_path):
-        # SVG page size
-        page_w = 480
-        page_h = 290
-        dwg = svgwrite.Drawing(
-            filename=output_svg_path,
-            size=(f"{page_w}mm", f"{page_h}mm"),
-            viewBox=f"0 0 {page_w} {page_h}"
+        super().__init__(
+            metal_type_name="large metal",
+            mem_w=127,
+            mem_h=76.2,
+            first_arg_from_gui=actual_graphics_path,
+            output_dir_from_gui=actual_output_dir
         )
-        mem_w = 127
-        mem_h = 76.2
-        corner_r = 6 # Remains 6 as per current file and no new instruction
 
-        # Recalculate grid based on new mem_w, mem_h and page_w, page_h
-        # Original logic: items placed on the bottom row, right to left.
-        # page_w = 480, page_h = 290
-
-        current_grid_cols = 3 # From self.batch_size in __init__
-        current_grid_rows = 1 # Implied by original "bottom row" logic
-
-        # Check if they fit, adjust if necessary
-        if current_grid_cols * mem_w > page_w:
-            current_grid_cols = page_w // mem_w
-        if current_grid_rows * mem_h > page_h:
-            current_grid_rows = page_h // mem_h
-
-        # Update batch_size in __init__ if these calculations lead to a different number
-        # For now, assume self.batch_size correctly reflects the number of items per SVG.
-        # The problem states "The batch_size should also be updated to grid_cols * grid_rows."
-        # This was done in __init__ based on the assumption of 3 cols, 1 row.
-
-        grid_cols = current_grid_cols
-        grid_rows = current_grid_rows
-
-        # total_mem is effectively self.batch_size for one SVG page
-        total_mem_on_page = grid_cols * grid_rows
-
-        grid_total_w = grid_cols * mem_w
-        grid_total_h = grid_rows * mem_h
-
-        # Position the grid at the bottom-right of the page
-        grid_start_x = page_w - grid_total_w
-        grid_start_y = page_h - grid_total_h
-
-        for idx, (_, order) in enumerate(batch_orders.iterrows()):
-            if idx >= total_mem_on_page: # Ensure we don't try to place more items than fit
-                break
-
-            # Assuming items are filled right-to-left, bottom row first if multiple rows.
-            # For a single row (grid_rows = 1):
-            row_idx = 0 # Relative to the grid block, not page
-            col_idx = grid_cols - 1 - (idx % grid_cols) # right to left filling
-
-            # For multiple rows (if grid_rows > 1), filling bottom-up, right-to-left:
-            # row_idx = grid_rows - 1 - (idx // grid_cols)
-            # col_idx = grid_cols - 1 - (idx % grid_cols)
-
-            # Sticking to original single row, right-to-left logic
-            x = grid_start_x + col_idx * mem_w
-            y = grid_start_y + row_idx * mem_h # y will be grid_start_y since row_idx is 0 for a single row
-
-            dwg.add(dwg.rect(
-                insert=(x, y),
-                size=(mem_w, mem_h),
-                rx=corner_r, ry=corner_r,
-                fill='none',
-                stroke='red',
-                stroke_width=0.1
-            ))
-            # Special SKU logic
-            sku = str(order.get('sku', '')).strip()
-            if sku == 'M0634S - CAT - RAINBOW BRIDGE':
-                graphic_filename = 'Small Rainbow Bridge.png'
-            else:
-                graphic_filename = str(order.get('graphic', '')).strip()
-                if graphic_filename and not graphic_filename.lower().startswith('small '):
-                    graphic_filename = 'Small ' + graphic_filename
-            graphic_path = os.path.join(self.graphics_path, graphic_filename)
-            if os.path.exists(graphic_path):
-                embedded_image = self.embed_image(graphic_path)
-                if embedded_image:
-                    dwg.add(dwg.image(
-                        href=embedded_image,
-                        insert=(x, y),
-                        size=(mem_w, mem_h),
-                        preserveAspectRatio='xMidYMid meet'
-                    ))
-            # Text placement (modular, using Georgia, same font sizes/positions)
-            font_family = "Georgia"
-            center_x = x + mem_w / 2
-            center_y = y + (mem_h / 2)
-            # Line 1: 3.33pt, 15mm above center
-            line1 = str(order.get('line_1', ''))
-            check_grammar_and_typos(line1)
-            line1_lines = split_line_to_fit(line1, 30)
-            dwg.add(add_multiline_text(
-                dwg,
-                line1_lines,
-                insert=(center_x, center_y - 15),
-                font_size="3.33pt",
-                font_family=font_family,
-                anchor="middle",
-                fill="black"
-            ))
-            # Line 2: 2.5mm, centered
-            line2 = str(order.get('line_2', ''))
-            check_grammar_and_typos(line2)
-            line2_lines = split_line_to_fit(line2, 30)
-            dwg.add(add_multiline_text(
-                dwg,
-                line2_lines,
-                insert=(center_x, center_y),
-                font_size="2.5mm",
-                font_family=font_family,
-                anchor="middle",
-                fill="black"
-            ))
-            # Line 3: 3.33pt, 10mm below center, wrap at 30 chars, line spacing 1
-            line3 = str(order.get('line_3', ''))
-            check_grammar_and_typos(line3)
-            line3_lines = split_line_to_fit(line3, 30)
-            dwg.add(add_multiline_text(
-                dwg,
-                line3_lines,
-                insert=(center_x, center_y + 10),
-                font_size="3.33pt",
-                font_family=font_family,
-                anchor="middle",
-                fill="black"
-            ))
-        # UV printer reference blue square
-        blue_size = 0.1
-        dwg.add(dwg.rect(
-            insert=(page_w - blue_size, page_h - blue_size),
-            size=(blue_size, blue_size),
-            fill='blue'
-        ))
-        dwg.save()
-        print(f"Wrote batch SVG: {output_svg_path}")
+# process_orders method is removed
+# populate_svg method is removed
 
 if __name__ == "__main__":
     import pandas as pd
@@ -217,11 +45,7 @@ if __name__ == "__main__":
     with open(os.path.join(test_graphics_dir, dummy_graphic_name), "w") as f:
         f.write("") # Create an empty file
 
-    processor = LargeMetalProcessor(
-        template_path=None, # LargeMetalProcessor doesn't use template_path in __init__
-        output_dir=test_output_dir,
-        graphics_path=test_graphics_dir
-    )
+    processor = LargeMetalProcessor(test_graphics_dir, test_output_dir)
 
     # Create a sample DataFrame
     sample_data = {
