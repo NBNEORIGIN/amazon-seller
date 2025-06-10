@@ -255,50 +255,56 @@ class BWLargePhotoStakesProcessor(MemorialBase):
             text_area_width_final = self.memorial_width_px_default - (text_x_final - x) - self.text_right_shift_px_orig
             text_center_x_final = text_x_final + text_area_width_final / 2
 
-            pt_to_px = self.pt_to_mm * self.px_per_mm
+            # pt_to_px = self.pt_to_mm * self.px_per_mm # Not needed directly if font_size in mm and dy in px
 
             if not pd.isna(order.get('line_1')):
-                line1_y_px = y + (28 * self.px_per_mm)
-                lines = split_line_to_fit(str(order['line_1']), 30)
-                for i, line_text in enumerate(lines): # Changed idx to i to avoid conflict
-                    dy_px = i * (self.line1_size_pt * pt_to_px * 1.3)
+                line1_y_px = y + (28 * self.px_per_mm) # Base y for line 1
+                lines = split_line_to_fit(str(order.get('line_1','')), 30)
+                line_height_px_l1 = self.line1_size_pt * self.pt_to_mm * self.px_per_mm * 1.3
+                for i, line_text in enumerate(lines):
+                    dy_px_line1 = i * line_height_px_l1
                     dwg.add(add_multiline_text(
-                    dwg,
-                    [line],
-                    insert=(text_center_x, line1_y + dy),
-                    font_size=f"{self.line1_size_pt * pt_to_mm}mm",
-                    font_family="Georgia",
-                    anchor="middle",
-                    fill="black"
-                ))
-        if not pd.isna(order['line_2']):
-            line2_y = y + (45 * self.px_per_mm)
-            lines = split_line_to_fit(str(order['line_2']), 30)
-            for idx, line in enumerate(lines):
-                dy = 0 if idx == 0 else self.line2_size_pt * pt_to_mm * 1.3
-                dwg.add(add_multiline_text(
-                    dwg,
-                    [line],
-                    insert=(text_center_x, line2_y + dy),
-                    font_size=f"{self.line2_size_pt * pt_to_mm}mm",
-                    font_family="Georgia",
-                    anchor="middle",
-                    fill="black"
-                ))
-        if not pd.isna(order['line_3']):
-            base_y = y + (57 * self.px_per_mm)
-            lines = split_line_to_fit(str(order['line_3']), 30)
-            for idx, line in enumerate(lines):
-                dy = 0 if idx == 0 else 12 * pt_to_mm * 1.3
-                dwg.add(add_multiline_text(
-                    dwg,
-                    [line],
-                    insert=(text_center_x, base_y + dy),
-                    font_size=f"{12 * pt_to_mm}mm",
-                    font_family="Georgia",
-                    anchor="middle",
-                    fill="black"
-                ))
+                        dwg,
+                        [line_text], # Pass list with single line
+                        insert=(text_center_x_final, line1_y_px + dy_px_line1), # Use text_center_x_final
+                        font_size=f"{self.line1_size_pt * self.pt_to_mm}mm",
+                        font_family="Georgia",
+                        anchor="middle",
+                        fill="black"
+                    ))
+
+            if not pd.isna(order.get('line_2')):
+                line2_y_px = y + (45 * self.px_per_mm) # Base y for line 2
+                lines = split_line_to_fit(str(order.get('line_2','')), 30)
+                line_height_px_l2 = self.line2_size_pt * self.pt_to_mm * self.px_per_mm * 1.3
+                for idx, line in enumerate(lines):
+                    dy_px_line2 = idx * line_height_px_l2
+                    dwg.add(add_multiline_text(
+                        dwg,
+                        [line], # Pass list with single line
+                        insert=(text_center_x_final, line2_y_px + dy_px_line2), # Use text_center_x_final
+                        font_size=f"{self.line2_size_pt * self.pt_to_mm}mm",
+                        font_family="Georgia",
+                        anchor="middle",
+                        fill="black"
+                    ))
+
+            if not pd.isna(order.get('line_3')):
+                base_y_px = y + (57 * self.px_per_mm) # Base y for line 3
+                lines = split_line_to_fit(str(order.get('line_3','')), 30)
+                line3_size_pt = 12 # Assuming 12pt for line 3 as per original dy calculation
+                line_height_px_l3 = line3_size_pt * self.pt_to_mm * self.px_per_mm * 1.3
+                for idx, line in enumerate(lines):
+                    dy_px_line3 = idx * line_height_px_l3
+                    dwg.add(add_multiline_text(
+                        dwg,
+                        [line], # Pass list with single line
+                        insert=(text_center_x_final, base_y_px + dy_px_line3), # Use text_center_x_final
+                        font_size=f"{line3_size_pt * self.pt_to_mm}mm",
+                        font_family="Georgia",
+                        anchor="middle",
+                        fill="black"
+                    ))
 
     def create_memorial_svg(self, orders, batch_num):
         filename = f"{self.CATEGORY}_{self.date_str}_{batch_num:03d}.svg"
