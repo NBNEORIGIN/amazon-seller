@@ -1,0 +1,40 @@
+Project: Amazon Order Processor & SVG Generator
+
+Recent Accomplishments & Current State:
+
+Metal Stake Processors (Large, XL, Medium, Small):
+
+I successfully refactored these processors to use a common BaseMetalProcessor (002 D2C WRITER/base_metal_processor.py). This base class handles common logic for SVG setup, batching, graphic/text placement, and CSV generation, customized by metal type name and dimensions.
+Individual processors (LargeMetalProcessor, XLMetalProcessor, MediumMetalProcessor, SmallMetalProcessor) now inherit from BaseMetalProcessor and primarily define their specific dimensions and metal type names.
+The SKULIST.csv has been updated to assign appropriate ProcessorCategory values (e.g., large_metal_graphic, xl_metal_graphic, etc.) to relevant SKUs, enabling correct routing by order_pipeline.py.
+main_gui_qt_clean.py has been updated to import these new processors and map the new categories in its processor_map, ensuring the GUI can dispatch orders to them.
+I resolved a TypeError in LargeMetalProcessor's __init__ method (due to argument mismatch when called from the GUI) by adjusting its constructor to correctly interpret arguments and call its parent.
+B&W Large Photo Stake Processor (BWLargePhotoStakesProcessor):
+
+This processor (002 D2C WRITER/bw_large_photo_stakes.py) has undergone significant debugging and refactoring to address a persistent "hang" issue.
+Initial Problem: The processor was hanging, likely due to complex SVG rendering logic for the OM008016BW SKU, which involved custom SVG path data for borders and clipping loaded from external text files.
+Resolution of Hang: I removed the OM008016BW-specific complex SVG logic. The processor was refactored to use a simpler, standard rectangular photo layout for all B&W Large Photo Stakes, similar to PhotoStakesProcessor.py. This involved:
+Removing the loading and usage of custom path data (d_clip_ellipse_om008016bw, d_border_om008016bw).
+Implementing a standard rectangular photo frame and a rectangular clipPath.
+Layout dimensions for the photo and text on the 200x120mm stake were derived from an SVG template you provided.
+Error Fixes During Debugging:
+I corrected a NameError related to text_center_x by using text_center_x_final.
+I corrected a ValueError caused by adding a <g> element as a child of <clipPath> by restructuring the clipPath definition for OM008016BW (before that logic was fully removed).
+I corrected photo path resolution for OM008016BW to properly handle paths relative to the project root (e.g., "images/filename.jpg").
+I corrected a TypeError by removing an unsupported line_spacing_factor argument from add_multiline_text calls.
+Styling Adjustments:
+The photo border stroke width was increased to 4mm as per your request.
+The rendering order of the photo and its border was adjusted so the border now draws on top of the photo.
+Current Status: The processor should now be stable and generating SVGs with a consistent rectangular photo layout for all items in its category.
+General Health & Key Files Touched:
+
+001 AMAZON DATA DOWNLOAD/order_pipeline.py: Its logic for assigning processor_category based on SKULIST.csv is central. We've relied on updating SKULIST.csv to ensure correct routing.
+assets/SKULIST.csv: Modified to include new ProcessorCategory values for the various metal stake types and to ensure correct categorization for B&W Large Photo Stakes.
+main_gui_qt_clean.py: Updated its processor_map and imports to recognize and use all the new and refactored processors.
+core/processors/svg_utils.py (specifically add_multiline_text): Its definition was consulted to fix the TypeError.
+Potential Next Steps (if continuing on a new branch):
+
+Fine-tuning Layouts: Review the SVG outputs for all new metal processors and the refactored BWLargePhotoStakesProcessor to ensure photo and text placements, font sizes, and wrap widths are optimal.
+OM008016BW Custom Design (Future): If the unique border/clip for OM008016BW is desired in the future, the .txt files containing its SVG path data would need to be carefully validated (ensuring they exist, contain valid SVG path data, and are not overly complex). The drawing logic in BWLargePhotoStakesProcessor would then need to be re-introduced piece by piece with thorough testing to avoid hangs.
+Comprehensive Testing: Test all processor categories with a variety of orders to ensure correct behavior and output.
+Code Review: Review the newly added base class (BaseMetalProcessor) and the refactored processors for any further improvements or potential issues.
