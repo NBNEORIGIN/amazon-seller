@@ -24,7 +24,7 @@ class BWLargePhotoStakesProcessor(MemorialBase):
         self.photo_width_mm = 65.18
         self.photo_height_mm = 90.59
         self.photo_corner_radius_mm = 5.4
-        self.photo_border_stroke_mm = 1 # Example stroke for photo frame, adjust as needed
+        self.photo_border_stroke_mm = 4 # Example stroke for photo frame, adjust as needed
 
         # Convert photo dimensions to pixels
         self.photo_area_x_px = int(self.photo_area_x_mm * self.px_per_mm)
