@@ -90,17 +90,6 @@ class BWLargePhotoStakesProcessor(MemorialBase):
         frame_x_abs = x_item_offset + self.photo_area_x_px
         frame_y_abs = y_item_offset + self.photo_area_y_px
 
-        # Draw photo border (simple rectangle)
-        dwg.add(dwg.rect(
-            insert=(frame_x_abs, frame_y_abs),
-            size=(self.photo_width_px, self.photo_height_px),
-            rx=self.photo_corner_radius_px,
-            ry=self.photo_corner_radius_px,
-            fill='none', # Or a light fill if needed
-            stroke='black',
-            stroke_width=self.photo_border_stroke_px
-        ))
-
         # Define clip path for the photo (rectangular)
         clip_id = f"clip_{order.get('order-item-id', 'default')}_{x_item_offset}_{y_item_offset}"
         clip_path_rect = dwg.rect(
@@ -141,6 +130,17 @@ class BWLargePhotoStakesProcessor(MemorialBase):
                 ))
             else: print(f"Warning: Could not embed photo data for {actual_photo_path}")
         else: print(f"Warning: Photo file not found at {actual_photo_path} for SKU {order.get('sku')}")
+
+        # Draw photo border (simple rectangle) - AFTER the image
+        dwg.add(dwg.rect(
+            insert=(frame_x_abs, frame_y_abs),
+            size=(self.photo_width_px, self.photo_height_px),
+            rx=self.photo_corner_radius_px,
+            ry=self.photo_corner_radius_px,
+            fill='none',
+            stroke='black',
+            stroke_width=self.photo_border_stroke_px
+        ))
 
         # Text placement (to the right of the photo)
         text_start_x_abs = x_item_offset + self.text_area_x_px
